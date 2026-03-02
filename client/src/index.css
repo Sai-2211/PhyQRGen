@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  background: #0a0a0a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: 'JetBrains Mono', 'Geist Mono', ui-monospace, SFMono-Regular, monospace;
+  color: #ecf8ff;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(0, 212, 255, 0.15), transparent 45%),
+    radial-gradient(circle at 80% 0%, rgba(0, 255, 136, 0.12), transparent 40%),
+    #0a0a0a;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.grid-pulse {
+  background-image:
+    linear-gradient(rgba(0, 212, 255, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.12) 1px, transparent 1px);
+  background-size: 34px 34px;
+}
+
+.vault-panel {
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  background: linear-gradient(145deg, rgba(16, 19, 22, 0.92), rgba(12, 14, 17, 0.92));
+  box-shadow: 0 0 0 1px rgba(0, 255, 136, 0.06), 0 22px 48px rgba(0, 0, 0, 0.42);
+}
+
+.scroll-slim::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scroll-slim::-webkit-scrollbar-thumb {
+  background: rgba(0, 212, 255, 0.4);
+  border-radius: 9999px;
+}
