@@ -121,13 +121,16 @@ async function start() {
   });
 
   try {
-    await redis.config('SET', 'save', '');
-    await redis.config('SET', 'appendonly', 'no');
-  } catch (error) {
-    throw new Error(
-      'Redis persistence must be disabled (save "" and appendonly no). Update Redis permissions/config.'
-    );
+  const [, saveVal] = await redis.config('GET', 'save');
+  const [, appendVal] = await redis.config('GET', 'appendonly');
+  if (saveVal !== '' || appendVal !== 'no') {
+    throw new Error('Redis persistence check failed.');
   }
+  } catch (error) {
+  throw new Error(
+    'Redis persistence must be disabled (save "" and appendonly no). Update Redis permissions/config.'
+  );
+}
 
   const sessionStore = new SessionStore(redis);
   const sessionTimers = new Map();
