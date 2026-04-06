@@ -11,38 +11,22 @@ class SessionStore {
     return `session:code:${shortCode}`;
   }
 
-  async persistWithExistingTtl(key, value) {
-    const ttlMs = await this.redis.pttl(key);
-    if (ttlMs <= 0) {
-      return false;
-    }
-
-    await this.redis.psetex(key, ttlMs, JSON.stringify(value));
-    return true;
-  }
-
   async createSession(session, ttlSeconds) {
     const sessionKey = this.sessionKey(session.sessionId);
     const shortCodeKey = this.shortCodeKey(session.shortCode);
-    const payload = JSON.stringify(session);
 
-    const tx = this.redis.multi();
-    tx.set(sessionKey, payload, 'EX', ttlSeconds);
-    tx.set(shortCodeKey, session.sessionId, 'EX', ttlSeconds);
-    await tx.exec();
+    await this.redis.set(sessionKey, JSON.stringify(session), {
+      ex: ttlSeconds,
+    });
+
+    await this.redis.set(shortCodeKey, session.sessionId, {
+      ex: ttlSeconds,
+    });
   }
 
   async getSession(sessionId) {
     const value = await this.redis.get(this.sessionKey(sessionId));
-    if (!value) {
-      return null;
-    }
-
-    try {
-      return JSON.parse(value);
-    } catch (_error) {
-      return null;
-    }
+    return value ? JSON.parse(value) : null;
   }
 
   async resolveSessionIdByShortCode(shortCode) {
@@ -51,67 +35,37 @@ class SessionStore {
 
   async getSessionByCode(code) {
     const sessionId = await this.resolveSessionIdByShortCode(code);
-    if (!sessionId) {
-      return null;
-    }
+    if (!sessionId) return null;
 
     const session = await this.getSession(sessionId);
-    if (!session) {
-      return null;
-    }
+    if (!session) return null;
 
     return { sessionId, session };
   }
 
   async updateSession(sessionId, updater) {
     const key = this.sessionKey(sessionId);
-    const maxRetries = 5;
 
-    for (let attempt = 0; attempt < maxRetries; attempt += 1) {
-      await this.redis.watch(key);
-      const value = await this.redis.get(key);
+    const value = await this.redis.get(key);
+    if (!value) return null;
 
-      if (!value) {
-        await this.redis.unwatch();
-        return null;
-      }
-
-      let session;
-      try {
-        session = JSON.parse(value);
-      } catch (_error) {
-        await this.redis.unwatch();
-        return null;
-      }
-
-      const next = updater({ ...session });
-      if (!next) {
-        await this.redis.unwatch();
-        return null;
-      }
-
-      const ttlMs = await this.redis.pttl(key);
-      if (ttlMs <= 0) {
-        await this.redis.unwatch();
-        return null;
-      }
-
-      const tx = this.redis.multi();
-      tx.psetex(key, ttlMs, JSON.stringify(next));
-
-      const execResult = await tx.exec();
-      if (execResult) {
-        return next;
-      }
+    let session;
+    try {
+      session = JSON.parse(value);
+    } catch {
+      return null;
     }
 
-    return null;
+    const updated = updater({ ...session });
+    if (!updated) return null;
+
+    await this.redis.set(key, JSON.stringify(updated));
+    return updated;
   }
 
   async addParticipant(sessionId, participant) {
     return this.updateSession(sessionId, (session) => {
-      const alreadyIn = session.participants.includes(participant.socketId);
-      if (alreadyIn) {
+      if (session.participants.includes(participant.socketId)) {
         return session;
       }
 
@@ -134,7 +88,7 @@ class SessionStore {
 
   async removeParticipant(sessionId, socketId) {
     return this.updateSession(sessionId, (session) => {
-      session.participants = (session.participants || []).filter((id) => id !== socketId);
+      session.participants = session.participants.filter((id) => id !== socketId);
 
       if (session.participantProfiles) {
         delete session.participantProfiles[socketId];
@@ -171,18 +125,14 @@ class SessionStore {
 
   async destroySession(sessionId) {
     const session = await this.getSession(sessionId);
-    if (!session) {
-      return null;
-    }
+    if (!session) return null;
 
-    const tx = this.redis.multi();
-    tx.del(this.sessionKey(sessionId));
+    await this.redis.del(this.sessionKey(sessionId));
 
     if (session.shortCode) {
-      tx.del(this.shortCodeKey(session.shortCode));
+      await this.redis.del(this.shortCodeKey(session.shortCode));
     }
 
-    await tx.exec();
     return session;
   }
 }

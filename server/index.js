@@ -4,8 +4,9 @@ const http = require('http');
 const cors = require('cors');
 const express = require('express');
 const multer = require('multer');
-const Redis = require('ioredis');
+const { Redis } = require("@upstash/redis");
 const { Server } = require('socket.io');
+
 const SessionStore = require('./store/sessionStore');
 const { createSessionRouter } = require('./routes/session');
 const createQrngRouter = require('./routes/qrng');
@@ -14,7 +15,6 @@ const { registerMessageHandler } = require('./socket/messageHandler');
 const { registerSignalingHandler } = require('./socket/signalingHandler');
 
 const PORT = Number(process.env.PORT || 3001);
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const QRNG_API_URL =
   process.env.QRNG_API_URL || 'https://qrng.anu.edu.au/API/jsonI.php?length=64&type=hex16';
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
@@ -85,54 +85,29 @@ async function start() {
   app.set('trust proxy', 1);
   app.use(setSecurityHeaders);
   app.use(enforceHttpsInProduction);
+
   app.use(
     cors({
       origin(origin, callback) {
-        if (!origin) {
-          return callback(null, true);
-        }
-
+        if (!origin) return callback(null, true);
         if (NODE_ENV === 'production' && origin !== CLIENT_URL) {
           return callback(new Error('CORS blocked for this origin'), false);
         }
-
         return callback(null, true);
       },
       methods: ['GET', 'POST'],
       credentials: false
     })
   );
-  app.use(express.json({ limit: '100kb' }));
 
-  // Multer is configured for memory-only buffers to avoid writing uploads to disk.
+  app.use(express.json({ limit: '100kb' }));
   app.locals.upload = multer({ storage: multer.memoryStorage() });
 
-  const redis = new Redis(REDIS_URL, {
-    maxRetriesPerRequest: 3,
-    enableOfflineQueue: false,
-    lazyConnect: true
+  // ✅ Upstash Redis (FIXED)
+  const redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN,
   });
-
-  redis.on('error', () => {
-    // Intentionally avoid logging message payloads or user data.
-  });
-
-  await redis.connect();
-
-  try {
-    const saveRes = await redis.config('GET', 'save');
-    const appendRes = await redis.config('GET', 'appendonly');
-
-    // Some ioredis versions return ['save', ''] while others return { save: '' }
-    const saveVal = Array.isArray(saveRes) ? saveRes[1] : saveRes?.save;
-    const appendVal = Array.isArray(appendRes) ? appendRes[1] : appendRes?.appendonly;
-
-    if (saveVal !== '' || appendVal !== 'no') {
-      throw new Error(`Expected save="" and appendonly="no", but got save="${saveVal}" and appendonly="${appendVal}"`);
-    }
-  } catch (error) {
-    throw new Error(`Redis persistence must be disabled (save "" and appendonly no). Details: ${error.message}`);
-  }
 
   const sessionStore = new SessionStore(redis);
   const sessionTimers = new Map();
@@ -144,11 +119,7 @@ async function start() {
       methods: ['GET', 'POST']
     },
     allowRequest: (req, callback) => {
-      if (NODE_ENV !== 'production') {
-        callback(null, true);
-        return;
-      }
-
+      if (NODE_ENV !== 'production') return callback(null, true);
       const proto = String(req.headers['x-forwarded-proto'] || '').toLowerCase();
       callback(null, proto === 'https');
     }
@@ -156,11 +127,10 @@ async function start() {
 
   async function destroySessionNow(sessionId, reason = 'expired') {
     const normalizedSessionId = String(sessionId || '').toLowerCase();
-    if (!normalizedSessionId || destroyingSessions.has(normalizedSessionId)) {
-      return;
-    }
+    if (!normalizedSessionId || destroyingSessions.has(normalizedSessionId)) return;
 
     destroyingSessions.add(normalizedSessionId);
+
     const timer = sessionTimers.get(normalizedSessionId);
     if (timer) {
       clearTimeout(timer);
@@ -169,20 +139,18 @@ async function start() {
 
     try {
       const session = await sessionStore.getSession(normalizedSessionId);
-      if (!session) {
-        return;
-      }
+      if (!session) return;
 
       const roomSockets = await io.in(normalizedSessionId).fetchSockets();
       const eventName = reason === 'nuked' ? 'session:nuked' : 'session:expired';
-      io.to(normalizedSessionId).emit(eventName, {});
 
+      io.to(normalizedSessionId).emit(eventName, {});
       await sessionStore.destroySession(normalizedSessionId);
 
-      roomSockets.forEach((connectedSocket) => {
-        connectedSocket.data.sessionId = null;
-        connectedSocket.leave(normalizedSessionId);
-        connectedSocket.disconnect(true);
+      roomSockets.forEach((s) => {
+        s.data.sessionId = null;
+        s.leave(normalizedSessionId);
+        s.disconnect(true);
       });
     } finally {
       destroyingSessions.delete(normalizedSessionId);
@@ -190,25 +158,23 @@ async function start() {
   }
 
   function scheduleSessionExpiry(sessionId, expiresAt) {
-    const normalizedSessionId = String(sessionId || '').toLowerCase();
-    const existing = sessionTimers.get(normalizedSessionId);
-    if (existing) {
-      clearTimeout(existing);
-    }
+    const id = String(sessionId || '').toLowerCase();
+
+    const existing = sessionTimers.get(id);
+    if (existing) clearTimeout(existing);
 
     const ms = Math.max(0, Number(expiresAt) - Date.now());
+
     const timer = setTimeout(() => {
-      destroySessionNow(normalizedSessionId, 'expired').catch(() => {
-        // Best-effort teardown.
-      });
+      destroySessionNow(id).catch(() => {});
     }, ms);
 
-    sessionTimers.set(normalizedSessionId, timer);
+    sessionTimers.set(id, timer);
   }
 
   app.use('/api/qrng', createQrngRouter({ qrngUrl: QRNG_API_URL }));
-  app.use(
-    '/api/session',
+
+  app.use('/api/session',
     createSessionRouter({
       sessionStore,
       qrngUrl: QRNG_API_URL,
@@ -229,18 +195,12 @@ async function start() {
   });
 
   io.on('connection', (socket) => {
-    registerSessionHandler({
-      io,
-      socket,
-      sessionStore,
-      destroySessionNow
-    });
+    registerSessionHandler({ io, socket, sessionStore, destroySessionNow });
     registerMessageHandler({ io, socket });
     registerSignalingHandler({ io, socket });
   });
 
   server.listen(PORT, () => {
-    // No message payload logging; startup logs are safe.
     console.log(`VaultChat server listening on port ${PORT}`);
   });
 }
