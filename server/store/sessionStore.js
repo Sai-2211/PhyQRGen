@@ -11,6 +11,18 @@ class SessionStore {
     return `session:code:${shortCode}`;
   }
 
+  // ✅ SAFE PARSER (fixes your bug)
+  parse(value) {
+    if (!value) return null;
+
+    try {
+      return typeof value === "string" ? JSON.parse(value) : value;
+    } catch (e) {
+      console.error("JSON parse error:", value);
+      return null;
+    }
+  }
+
   async createSession(session, ttlSeconds) {
     const sessionKey = this.sessionKey(session.sessionId);
     const shortCodeKey = this.shortCodeKey(session.shortCode);
@@ -26,7 +38,7 @@ class SessionStore {
 
   async getSession(sessionId) {
     const value = await this.redis.get(this.sessionKey(sessionId));
-    return value ? JSON.parse(value) : null;
+    return this.parse(value);
   }
 
   async resolveSessionIdByShortCode(shortCode) {
@@ -47,14 +59,8 @@ class SessionStore {
     const key = this.sessionKey(sessionId);
 
     const value = await this.redis.get(key);
-    if (!value) return null;
-
-    let session;
-    try {
-      session = JSON.parse(value);
-    } catch {
-      return null;
-    }
+    const session = this.parse(value);
+    if (!session) return null;
 
     const updated = updater({ ...session });
     if (!updated) return null;
@@ -65,11 +71,14 @@ class SessionStore {
 
   async addParticipant(sessionId, participant) {
     return this.updateSession(sessionId, (session) => {
+      session.participants = session.participants || [];
+
       if (session.participants.includes(participant.socketId)) {
         return session;
       }
 
       session.participants.push(participant.socketId);
+
       session.participantProfiles = session.participantProfiles || {};
       session.participantProfiles[participant.socketId] = {
         socketId: participant.socketId,
@@ -88,7 +97,9 @@ class SessionStore {
 
   async removeParticipant(sessionId, socketId) {
     return this.updateSession(sessionId, (session) => {
-      session.participants = session.participants.filter((id) => id !== socketId);
+      session.participants = (session.participants || []).filter(
+        (id) => id !== socketId
+      );
 
       if (session.participantProfiles) {
         delete session.participantProfiles[socketId];
