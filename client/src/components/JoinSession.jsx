@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { Html5Qrcode } from 'html5-qrcode';
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL;
 
 function parseSessionRef(raw) {
   const text = String(raw || '').trim();
@@ -75,7 +75,7 @@ export default function JoinSession({ onJoin }) {
   }, [scannerOpen]);
 
   async function validateSession(ref) {
-    const response = await axios.get(`${SERVER_URL}/api/session/${encodeURIComponent(ref)}/validate`);
+    const response = await axios.get(`${API_URL}/api/session/${encodeURIComponent(ref)}/validate`);
     return response.data;
   }
 

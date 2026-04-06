@@ -8,7 +8,7 @@ import { generateKeyPair } from '../crypto/keyExchange';
 import { encryptFileForRecipient, encryptTextForRecipient } from '../crypto/encrypt';
 import { decryptFileFromSender, decryptTextFromSender } from '../crypto/decrypt';
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL;
 
 export default function Room({ sessionRef, navigation, initialPayload }) {
   const { socket, status } = useSocket();
@@ -38,7 +38,7 @@ export default function Room({ sessionRef, navigation, initialPayload }) {
         setValidationError('');
 
         const response = await axios.get(
-          `${SERVER_URL}/api/session/${encodeURIComponent(String(sessionRef || ''))}/validate`
+          `${API_URL}/api/session/${encodeURIComponent(String(sessionRef || ''))}/validate`
         );
 
         if (!active) {

@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL;
 
 export default function useSocket() {
   const socketRef = useRef(null);
   const [status, setStatus] = useState('connecting');
 
   useEffect(() => {
-    const socket = io(SERVER_URL, {
+    const socket = io(API_URL, {
       transports: ['websocket'],
       reconnectionAttempts: 5,
       reconnectionDelay: 800
