@@ -102,35 +102,37 @@ async function start() {
       credentials: false
     })
   );
-  app.use(express.json({ limit: '2mb' }));
+  app.use(express.json({ limit: '100kb' }));
 
   // Multer is configured for memory-only buffers to avoid writing uploads to disk.
   app.locals.upload = multer({ storage: multer.memoryStorage() });
 
   const redis = new Redis(REDIS_URL, {
     maxRetriesPerRequest: 3,
-    enableOfflineQueue: false
+    enableOfflineQueue: false,
+    lazyConnect: true
   });
 
   redis.on('error', () => {
     // Intentionally avoid logging message payloads or user data.
   });
 
-  await redis.connect().catch(() => {
-    // ioredis may auto-connect depending on runtime; ignore duplicate connect failures.
-  });
+  await redis.connect();
 
   try {
-  const [, saveVal] = await redis.config('GET', 'save');
-  const [, appendVal] = await redis.config('GET', 'appendonly');
-  if (saveVal !== '' || appendVal !== 'no') {
-    throw new Error('Redis persistence check failed.');
-  }
+    const saveRes = await redis.config('GET', 'save');
+    const appendRes = await redis.config('GET', 'appendonly');
+
+    // Some ioredis versions return ['save', ''] while others return { save: '' }
+    const saveVal = Array.isArray(saveRes) ? saveRes[1] : saveRes?.save;
+    const appendVal = Array.isArray(appendRes) ? appendRes[1] : appendRes?.appendonly;
+
+    if (saveVal !== '' || appendVal !== 'no') {
+      throw new Error(`Expected save="" and appendonly="no", but got save="${saveVal}" and appendonly="${appendVal}"`);
+    }
   } catch (error) {
-  throw new Error(
-    'Redis persistence must be disabled (save "" and appendonly no). Update Redis permissions/config.'
-  );
-}
+    throw new Error(`Redis persistence must be disabled (save "" and appendonly no). Details: ${error.message}`);
+  }
 
   const sessionStore = new SessionStore(redis);
   const sessionTimers = new Map();

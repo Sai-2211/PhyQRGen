@@ -33,16 +33,6 @@ function hexToBytes(hex) {
   return bytes;
 }
 
-function deriveFileKeyFromSeed(seedHex) {
-  const seedBytes = hexToBytes(seedHex);
-  if (seedBytes.length >= 32) {
-    return seedBytes.slice(0, 32);
-  }
-
-  const fallback = nacl.randomBytes(32);
-  fallback.set(seedBytes.slice(0, 32));
-  return fallback;
-}
 
 function generateKeyPair() {
   const keyPair = nacl.box.keyPair();
@@ -74,7 +64,7 @@ export {
   bytesToBase64,
   base64ToBytes,
   hexToBytes,
-  deriveFileKeyFromSeed,
+
   generateKeyPair,
   computeSharedSecret,
   computeSharedSecretsMap

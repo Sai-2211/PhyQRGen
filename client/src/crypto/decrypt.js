@@ -3,14 +3,6 @@ import { base64ToBytes } from './keyExchange';
 
 const decoder = new TextDecoder();
 
-async function decryptAesGcm({ ciphertext, iv, keyBytes }) {
-  const cipherBytes = base64ToBytes(ciphertext);
-  const ivBytes = base64ToBytes(iv);
-  const cryptoKey = await crypto.subtle.importKey('raw', keyBytes, 'AES-GCM', false, ['decrypt']);
-
-  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: ivBytes }, cryptoKey, cipherBytes);
-  return new Uint8Array(plain);
-}
 
 function decryptTextFromSender({ ciphertext, nonce, senderPublicKey, recipientSecretKey }) {
   const opened = nacl.box.open(
@@ -52,4 +44,4 @@ function decryptFileFromSender({ payload, senderPublicKey, recipientSecretKey })
   return decryptedBytes;
 }
 
-export { decryptAesGcm, decryptTextFromSender, decryptFileFromSender };
+export { decryptTextFromSender, decryptFileFromSender };

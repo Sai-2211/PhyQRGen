@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import axios from 'axios';
-import { QRCodeSVG } from 'qrcode.react';
+import QuantumProcess from './QuantumProcess';
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
 
@@ -27,7 +27,6 @@ export default function CreateSession({ onCreated }) {
     if (durationChoice === 'custom') {
       return Math.min(24 * 60 * 60, Math.max(15 * 60, Number(customHours || 1) * 60 * 60));
     }
-
     return Number(durationChoice);
   }, [durationChoice, customHours]);
 
@@ -64,29 +63,50 @@ export default function CreateSession({ onCreated }) {
 
   if (result) {
     return (
-      <section className="vault-panel relative overflow-hidden rounded-2xl p-6 md:p-8">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute inset-0 grid-pulse animate-pulseGrid" />
-          <div className="absolute left-0 right-0 h-8 bg-gradient-to-b from-transparent to-transparent border-t border-vault-accent/25 animate-scanline" />
+      <section className="w-full space-y-5">
+        {/* Session created badge */}
+        <div className="flex items-center justify-center gap-3">
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '6px 16px', borderRadius: 999,
+            background: 'rgba(0,255,136,0.12)',
+            border: '1px solid rgba(0,255,136,0.35)'
+          }}>
+            <span style={{ fontSize: 14 }}>✓</span>
+            <span style={{ fontSize: 12, color: '#00ff88', fontWeight: 700, letterSpacing: '0.15em' }}>
+              SESSION CREATED
+            </span>
+          </div>
         </div>
 
-        <div className="relative z-10 flex flex-col items-center gap-5">
-          <p className="text-xs uppercase tracking-[0.25em] text-vault-accent">Session Created</p>
-          <div className="rounded-2xl bg-white p-4 md:p-6">
-            <QRCodeSVG value={result.qrPayload} size={280} bgColor="#ffffff" fgColor="#0a0a0a" />
+        {/* Session meta info */}
+        <div style={{
+          borderRadius: 12,
+          border: '1px solid rgba(0,212,255,0.2)',
+          background: 'rgba(0,0,0,0.4)',
+          padding: '12px 16px',
+          display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center'
+        }}>
+          <div>
+            <p style={{ fontSize: 9, color: '#7f9cab', textTransform: 'uppercase', letterSpacing: '0.2em', margin: 0 }}>Session Code</p>
+            <p style={{ fontSize: 20, color: '#00ff88', fontWeight: 800, letterSpacing: '0.25em', margin: '2px 0 0' }}>{result.shortCode}</p>
           </div>
-          <p className="text-sm text-vault-muted text-center">Scan to join this encrypted room</p>
-
-          <div className="w-full rounded-xl border border-vault-accent/30 bg-vault-panel2/70 p-4">
-            <p className="text-xs text-vault-muted">Session Code</p>
-            <p className="mt-1 text-lg font-semibold tracking-[0.2em] text-vault-accentAlt">{result.shortCode}</p>
-            <p className="mt-2 text-xs text-vault-muted">Session ID: {result.sessionId}</p>
-            <p className="mt-2 text-xs text-vault-muted">Expires at: {new Date(result.expiresAt).toLocaleString()}</p>
-            <p className="mt-2 text-xs text-vault-accent">QRNG {'⚛'} {result.qrngSource === 'quantum' ? 'quantum entropy' : 'fallback entropy'}</p>
+          <div style={{ width: 1, height: 36, background: 'rgba(0,212,255,0.2)' }} />
+          <div>
+            <p style={{ fontSize: 9, color: '#7f9cab', textTransform: 'uppercase', letterSpacing: '0.2em', margin: 0 }}>Expires</p>
+            <p style={{ fontSize: 12, color: '#ecf8ff', margin: '3px 0 0' }}>{new Date(result.expiresAt).toLocaleString()}</p>
           </div>
-
-          <p className="text-sm text-vault-muted">Waiting for participants...</p>
+          <div style={{ width: 1, height: 36, background: 'rgba(0,212,255,0.2)', display: 'none' }} />
         </div>
+
+        {/* ★ Main Feature — Quantum Process Visualizer */}
+        <QuantumProcess
+          entropyBytes={result.entropyString || ''}
+          qrngSource={result.qrngSource}
+          quantumNumber={result.sessionId || ''}
+          qrPayload={result.qrPayload}
+          shortCode={result.shortCode}
+        />
       </section>
     );
   }
@@ -94,7 +114,9 @@ export default function CreateSession({ onCreated }) {
   return (
     <form className="vault-panel rounded-2xl p-6 md:p-8" onSubmit={handleCreate}>
       <h2 className="text-lg font-semibold text-vault-text">Create Secure Session</h2>
-      <p className="mt-1 text-sm text-vault-muted">Create a room and share the QR invite.</p>
+      <p className="mt-1 text-sm text-vault-muted">
+        Create a quantum-encrypted ephemeral room. Entropy is sourced from the ANU Quantum Random Number Generator.
+      </p>
 
       <label className="mt-6 block text-sm text-vault-muted">
         Nickname (optional)
@@ -156,7 +178,7 @@ export default function CreateSession({ onCreated }) {
         <input
           type="password"
           inputMode="numeric"
-          pattern="\\d{4,8}"
+          pattern="\d{4,8}"
           className="mt-2 w-full rounded-lg border border-vault-accent/30 bg-vault-panel2 px-3 py-2 text-vault-text outline-none focus:border-vault-accent"
           value={passcode}
           onChange={(event) => setPasscode(event.target.value.replace(/\D/g, '').slice(0, 8))}
@@ -171,8 +193,20 @@ export default function CreateSession({ onCreated }) {
         className="mt-6 w-full rounded-lg border border-vault-accentAlt/45 bg-vault-accentAlt/10 px-4 py-2 font-medium text-vault-accentAlt transition hover:bg-vault-accentAlt/20 disabled:opacity-50"
         disabled={loading}
       >
-        {loading ? 'Generating quantum session...' : 'Create Session'}
+        {loading ? (
+          <span className="flex items-center justify-center gap-2">
+            <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite', fontSize: 14 }}>⚛</span>
+            Fetching quantum entropy…
+          </span>
+        ) : (
+          '⚛ Create Quantum-Encrypted Session'
+        )}
       </button>
+
+      {/* Quantum badge */}
+      <p style={{ textAlign: 'center', marginTop: 10, fontSize: 11, color: '#7f9cab' }}>
+        Session key derived from ANU Quantum Random Number Generator
+      </p>
     </form>
   );
 }

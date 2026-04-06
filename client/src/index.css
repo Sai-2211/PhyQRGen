@@ -48,3 +48,13 @@ body {
   background: rgba(0, 212, 255, 0.4);
   border-radius: 9999px;
 }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes stepReveal {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

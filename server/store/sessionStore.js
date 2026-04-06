@@ -64,22 +64,48 @@ class SessionStore {
   }
 
   async updateSession(sessionId, updater) {
-    const session = await this.getSession(sessionId);
-    if (!session) {
-      return null;
+    const key = this.sessionKey(sessionId);
+    const maxRetries = 5;
+
+    for (let attempt = 0; attempt < maxRetries; attempt += 1) {
+      await this.redis.watch(key);
+      const value = await this.redis.get(key);
+
+      if (!value) {
+        await this.redis.unwatch();
+        return null;
+      }
+
+      let session;
+      try {
+        session = JSON.parse(value);
+      } catch (_error) {
+        await this.redis.unwatch();
+        return null;
+      }
+
+      const next = updater({ ...session });
+      if (!next) {
+        await this.redis.unwatch();
+        return null;
+      }
+
+      const ttlMs = await this.redis.pttl(key);
+      if (ttlMs <= 0) {
+        await this.redis.unwatch();
+        return null;
+      }
+
+      const tx = this.redis.multi();
+      tx.psetex(key, ttlMs, JSON.stringify(next));
+
+      const execResult = await tx.exec();
+      if (execResult) {
+        return next;
+      }
     }
 
-    const next = updater({ ...session });
-    if (!next) {
-      return null;
-    }
-
-    const ok = await this.persistWithExistingTtl(this.sessionKey(sessionId), next);
-    if (!ok) {
-      return null;
-    }
-
-    return next;
+    return null;
   }
 
   async addParticipant(sessionId, participant) {

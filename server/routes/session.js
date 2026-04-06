@@ -71,13 +71,15 @@ function createSessionRouter({
       await sessionStore.createSession(session, duration);
       scheduleSessionExpiry(sessionId, expiresAt);
 
-      const qrPayload = `vaultchat://join/${sessionId}?exp=${expiresAt}`;
+      const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+      const qrPayload = `${clientUrl}/room/${sessionId}`;
       return res.status(201).json({
         sessionId,
         shortCode,
         qrPayload,
         expiresAt,
         qrngSource: source,
+        entropyString: bytes,
         creatorSecret
       });
     } catch (error) {

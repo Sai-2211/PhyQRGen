@@ -24,7 +24,7 @@ export default function Room({ sessionRef, navigation, initialPayload }) {
   });
   const [messages, setMessages] = useState([]);
   const [cryptoError, setCryptoError] = useState('');
-  const handleSessionEnded = useCallback(() => {}, []);
+  const handleSessionEnded = useCallback(() => { }, []);
 
   const createdObjectUrlsRef = useRef([]);
   const [keyPair, setKeyPair] = useState(() => generateKeyPair());
@@ -72,8 +72,8 @@ export default function Room({ sessionRef, navigation, initialPayload }) {
 
   const canAttemptJoin = Boolean(
     resolvedSessionId &&
-      identity.displayName.trim() &&
-      (!requiresPasscode || /^\d{4,8}$/.test(identity.passcode || ''))
+    identity.displayName.trim() &&
+    (!requiresPasscode || /^\d{4,8}$/.test(identity.passcode || ''))
   );
 
   const session = useSession({
@@ -303,7 +303,7 @@ export default function Room({ sessionRef, navigation, initialPayload }) {
       return;
     }
 
-    socket.emit('session:nuke', { sessionId: resolvedSessionId }, () => {});
+    socket.emit('session:nuke', { sessionId: resolvedSessionId }, () => { });
   }
 
   function handleExitRoom() {
@@ -430,12 +430,15 @@ export default function Room({ sessionRef, navigation, initialPayload }) {
           localStream: webRtc.localStream,
           remoteStreams: webRtc.remoteStreams,
           callMode: webRtc.callMode,
-          onStartVideo: () => webRtc.startCall('video').catch(() => {}),
-          onStartAudio: () => webRtc.startCall('audio').catch(() => {}),
-          onShareScreen: () => webRtc.startCall('screen').catch(() => {}),
+          onStartVideo: () => webRtc.startCall('video').catch(() => { }),
+          onStartAudio: () => webRtc.startCall('audio').catch(() => { }),
+          onShareScreen: () => webRtc.startCall('screen').catch(() => { }),
           onEndCall: webRtc.endCall
         }}
         endedReason={session.endedReason}
+        qrPayload={initialPayload?.qrPayload || ''}
+        qrngSource={initialPayload?.qrngSource || 'quantum'}
+        entropyString={initialPayload?.entropyString || ''}
       />
     </>
   );

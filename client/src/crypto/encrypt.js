@@ -1,18 +1,8 @@
 import nacl from 'tweetnacl';
-import { base64ToBytes, bytesToBase64, deriveFileKeyFromSeed } from './keyExchange';
+import { base64ToBytes, bytesToBase64 } from './keyExchange';
 
 const encoder = new TextEncoder();
 
-async function encryptAesGcm(plainBytes, keyBytes) {
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const cryptoKey = await crypto.subtle.importKey('raw', keyBytes, 'AES-GCM', false, ['encrypt']);
-  const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, cryptoKey, plainBytes);
-
-  return {
-    iv: bytesToBase64(iv),
-    ciphertext: bytesToBase64(new Uint8Array(cipher))
-  };
-}
 
 function encryptTextForRecipient({ message, recipientPublicKey, senderSecretKey }) {
   const nonce = nacl.randomBytes(24);
@@ -34,12 +24,11 @@ function encryptFileForRecipient({
   arrayBuffer,
   recipientPublicKey,
   senderSecretKey,
-  fileMeta,
-  entropySeed
+  fileMeta
 }) {
   const fileBytes = new Uint8Array(arrayBuffer);
   const fileNonce = nacl.randomBytes(24);
-  const fileKey = entropySeed ? deriveFileKeyFromSeed(entropySeed) : nacl.randomBytes(32);
+  const fileKey = nacl.randomBytes(32);
 
   const encryptedBlob = nacl.secretbox(fileBytes, fileNonce, fileKey);
 
@@ -63,4 +52,4 @@ function encryptFileForRecipient({
   };
 }
 
-export { encryptAesGcm, encryptTextForRecipient, encryptFileForRecipient };
+export { encryptTextForRecipient, encryptFileForRecipient };
