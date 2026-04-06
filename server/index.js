@@ -65,14 +65,10 @@ function setSecurityHeaders(req, res, next) {
 }
 
 function enforceHttpsInProduction(req, res, next) {
-  if (NODE_ENV !== 'production') {
-    return next();
-  }
+  if (NODE_ENV !== 'production') return next();
 
   const proto = String(req.headers['x-forwarded-proto'] || '').toLowerCase();
-  if (req.secure || proto === 'https') {
-    return next();
-  }
+  if (req.secure || proto === 'https') return next();
 
   return res.status(426).json({ error: 'HTTPS required in production' });
 }
@@ -81,6 +77,12 @@ async function start() {
   const app = express();
   const server = http.createServer(app);
   const createSessionRateLimit = createSessionCreateRateLimit();
+
+  // ✅ REQUEST LOGGER (NEW)
+  app.use((req, res, next) => {
+    console.log("➡️", req.method, req.url);
+    next();
+  });
 
   app.set('trust proxy', 1);
   app.use(setSecurityHeaders);
@@ -103,7 +105,6 @@ async function start() {
   app.use(express.json({ limit: '100kb' }));
   app.locals.upload = multer({ storage: multer.memoryStorage() });
 
-  // ✅ Upstash Redis (FIXED)
   const redis = new Redis({
     url: process.env.UPSTASH_REDIS_REST_URL,
     token: process.env.UPSTASH_REDIS_REST_TOKEN,
@@ -126,34 +127,34 @@ async function start() {
   });
 
   async function destroySessionNow(sessionId, reason = 'expired') {
-    const normalizedSessionId = String(sessionId || '').toLowerCase();
-    if (!normalizedSessionId || destroyingSessions.has(normalizedSessionId)) return;
+    const id = String(sessionId || '').toLowerCase();
+    if (!id || destroyingSessions.has(id)) return;
 
-    destroyingSessions.add(normalizedSessionId);
+    destroyingSessions.add(id);
 
-    const timer = sessionTimers.get(normalizedSessionId);
+    const timer = sessionTimers.get(id);
     if (timer) {
       clearTimeout(timer);
-      sessionTimers.delete(normalizedSessionId);
+      sessionTimers.delete(id);
     }
 
     try {
-      const session = await sessionStore.getSession(normalizedSessionId);
+      const session = await sessionStore.getSession(id);
       if (!session) return;
 
-      const roomSockets = await io.in(normalizedSessionId).fetchSockets();
+      const sockets = await io.in(id).fetchSockets();
       const eventName = reason === 'nuked' ? 'session:nuked' : 'session:expired';
 
-      io.to(normalizedSessionId).emit(eventName, {});
-      await sessionStore.destroySession(normalizedSessionId);
+      io.to(id).emit(eventName, {});
+      await sessionStore.destroySession(id);
 
-      roomSockets.forEach((s) => {
+      sockets.forEach((s) => {
         s.data.sessionId = null;
-        s.leave(normalizedSessionId);
+        s.leave(id);
         s.disconnect(true);
       });
     } finally {
-      destroyingSessions.delete(normalizedSessionId);
+      destroyingSessions.delete(id);
     }
   }
 
@@ -187,10 +188,12 @@ async function start() {
     res.json({ ok: true });
   });
 
-  app.use((error, _req, res, _next) => {
-    const status = Number(error?.status) || 500;
-    res.status(status).json({
-      error: status >= 500 ? 'Internal server error' : error.message
+  // ✅ REAL ERROR HANDLER (FIXED)
+  app.use((error, req, res, next) => {
+    console.error("🔥 ERROR:", error);
+
+    res.status(500).json({
+      error: error.message,
     });
   });
 
