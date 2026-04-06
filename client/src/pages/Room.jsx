@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import axios from 'axios';
+import API from '../api';
 import ChatRoom from '../components/ChatRoom';
 import useSocket from '../hooks/useSocket';
 import useSession from '../hooks/useSession';
@@ -7,8 +7,6 @@ import useWebRTC from '../hooks/useWebRTC';
 import { generateKeyPair } from '../crypto/keyExchange';
 import { encryptFileForRecipient, encryptTextForRecipient } from '../crypto/encrypt';
 import { decryptFileFromSender, decryptTextFromSender } from '../crypto/decrypt';
-
-const API_URL = import.meta.env.VITE_API_URL;
 
 export default function Room({ sessionRef, navigation, initialPayload }) {
   const { socket, status } = useSocket();
@@ -37,8 +35,8 @@ export default function Room({ sessionRef, navigation, initialPayload }) {
         setValidationLoading(true);
         setValidationError('');
 
-        const response = await axios.get(
-          `${API_URL}/api/session/${encodeURIComponent(String(sessionRef || ''))}/validate`
+        const response = await API.get(
+          `/api/session/${encodeURIComponent(String(sessionRef || ''))}/validate`
         );
 
         if (!active) {

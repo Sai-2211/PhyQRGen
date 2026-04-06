@@ -1,8 +1,6 @@
 import { useMemo, useState } from 'react';
-import axios from 'axios';
+import API from '../api';
 import QuantumProcess from './QuantumProcess';
-
-const API_URL = import.meta.env.VITE_API_URL;
 
 const presetDurations = [
   { label: '15 min', value: 15 * 60 },
@@ -45,7 +43,7 @@ export default function CreateSession({ onCreated }) {
         payload.passcode = passcode;
       }
 
-      const response = await axios.post(`${API_URL}/api/session/create`, payload);
+      const response = await API.post('/api/session/create', payload);
       const next = {
         ...response.data,
         displayName: nickname || 'Creator',
