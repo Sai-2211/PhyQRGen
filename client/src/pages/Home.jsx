@@ -25,11 +25,11 @@ export default function Home({ navigation }) {
             </div>
 
             <div className="rounded-[28px] border border-vault-border bg-vault-surface p-5 sm:p-6">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-vault-muted">What changed</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-vault-muted">Quantum highlights</p>
               <ul className="mt-4 space-y-3 text-sm leading-6 text-vault-text">
-                <li>Text-first room layout with stronger attachment handling.</li>
-                <li>Built-in QR scanning that resolves real room URLs correctly.</li>
-                <li>Quantum visualization through a Bloch sphere instead of the old neon pipeline.</li>
+                <li>ANU QRNG powers session entropy whenever the live quantum source is available.</li>
+                <li>Quantum-derived randomness seeds each temporary room before invites are shared.</li>
+                <li>The Bloch sphere visualizes entropy as a quantum state with a live vector length shift.</li>
               </ul>
             </div>
           </div>
