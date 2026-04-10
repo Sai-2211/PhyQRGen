@@ -351,7 +351,7 @@ export default function Room({ sessionRef, navigation, initialPayload }) {
     );
   }
 
-  if (!session.joined) {
+  if (!session.joined && !session.endedReason) {
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-3xl items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
         <section className="vault-panel w-full overflow-hidden rounded-[32px] p-6 shadow-vault sm:p-8">
@@ -436,19 +436,19 @@ export default function Room({ sessionRef, navigation, initialPayload }) {
 
   return (
     <>
-      {session.joinError ? (
+      {session.joinError && !session.endedReason ? (
         <div className="fixed left-1/2 top-4 z-40 -translate-x-1/2 rounded-lg border border-vault-danger/45 bg-vault-danger/15 px-4 py-2 text-sm text-vault-danger">
           {session.joinError}
         </div>
       ) : null}
 
-      {cryptoError ? (
+      {cryptoError && !session.endedReason ? (
         <div className="fixed left-1/2 top-16 z-40 -translate-x-1/2 rounded-lg border border-vault-danger/45 bg-vault-danger/15 px-4 py-2 text-sm text-vault-danger">
           {cryptoError}
         </div>
       ) : null}
 
-      {status !== 'connected' ? (
+      {status !== 'connected' && !session.endedReason ? (
         <div className="fixed left-1/2 top-4 z-40 -translate-x-1/2 rounded-lg border border-vault-accent/45 bg-vault-accent/15 px-4 py-2 text-sm text-vault-accent">
           Socket: {status}
         </div>
