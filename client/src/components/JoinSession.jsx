@@ -62,7 +62,7 @@ export default function JoinSession({ onJoin }) {
     return response.data;
   }
 
-  async function attemptJoin(rawRef, allowGuestFallback = true) {
+  async function attemptJoin(rawRef) {
     const parsedRef = extractSessionRef(rawRef).toUpperCase();
     if (!parsedRef) {
       throw new Error('Provide a room code or scan a QR invite.');
@@ -80,7 +80,7 @@ export default function JoinSession({ onJoin }) {
 
     onJoin?.({
       sessionRef: validation.sessionId || parsedRef,
-      displayName: displayNameRef.current.trim() || (allowGuestFallback ? 'Guest' : ''),
+      displayName: displayNameRef.current.trim(),
       passcode: passcodeRef.current || ''
     });
   }
@@ -132,7 +132,12 @@ export default function JoinSession({ onJoin }) {
             setScannerOpen(false);
 
             try {
-              await attemptJoin(parsed, true);
+              const validation = await validateSession(parsed.toUpperCase());
+              if (!validation?.valid) {
+                throw new Error('Room not found or already expired.');
+              }
+
+              setRequiresPasscode(Boolean(validation.requiresPasscode));
             } catch (joinError) {
               setError(joinError.message || 'Unable to join this room.');
             } finally {
@@ -165,7 +170,7 @@ export default function JoinSession({ onJoin }) {
     setLoading(true);
 
     try {
-      await attemptJoin(sessionRef, true);
+      await attemptJoin(sessionRef);
     } catch (joinError) {
       setError(joinError.message || 'Unable to join this room.');
     } finally {
@@ -174,33 +179,33 @@ export default function JoinSession({ onJoin }) {
   }
 
   return (
-    <form className="vault-panel rounded-[34px] p-6 shadow-vault lg:p-8" onSubmit={handleJoin}>
+    <form className="vault-panel overflow-hidden rounded-[34px] p-6 shadow-vault lg:p-8" onSubmit={handleJoin}>
       <div className="flex flex-col gap-3">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-vault-muted">Join room</p>
-        <h2 className="text-3xl font-semibold text-vault-text">Scan or enter a room code</h2>
+        <h2 className="text-3xl font-semibold text-vault-text sm:text-4xl">Scan or enter a room code</h2>
         <p className="max-w-2xl text-sm leading-6 text-vault-muted">
-          The in-app scanner now resolves the actual room ID from the invite URL before routing you into the room.
+          The scanner resolves the room ID for you, but the app only enters the room after you review the details and continue.
         </p>
       </div>
 
       <button
         type="button"
-        className="mt-8 rounded-full border border-vault-border bg-white px-5 py-3 text-sm font-medium text-vault-text transition hover:bg-vault-surface"
+        className="mt-8 w-full rounded-full border border-vault-border bg-white px-5 py-3 text-sm font-medium text-vault-text transition hover:bg-vault-surface sm:w-auto"
         onClick={() => setScannerOpen((current) => !current)}
       >
         {scannerOpen ? 'Close scanner' : 'Open QR scanner'}
       </button>
 
       {scannerOpen ? (
-        <div className="mt-5 rounded-[28px] border border-vault-border bg-white p-4 shadow-vault-soft">
-          <div id="vaultchat-qr-reader" className="w-full overflow-hidden rounded-[20px]" />
+        <div className="mt-5 overflow-hidden rounded-[28px] border border-vault-border bg-white p-4 shadow-vault-soft">
+          <div id="vaultchat-qr-reader" className="mx-auto w-full max-w-sm overflow-hidden rounded-[20px]" />
           <p className="mt-3 text-xs text-vault-muted">
             Hold the code steady inside the frame. Room links and room IDs are both supported.
           </p>
         </div>
       ) : null}
 
-      <div className="mt-6 grid gap-5 md:grid-cols-2">
+      <div className="mt-6 grid gap-5 lg:grid-cols-2">
         <label className="block text-sm text-vault-muted">
           Room code or scanned room ID
           <input
@@ -238,10 +243,14 @@ export default function JoinSession({ onJoin }) {
       {error ? <p className="mt-5 text-sm text-vault-danger">{error}</p> : null}
 
       <div className="mt-8 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <p className="text-sm text-vault-muted">If the room has no passcode, scanning routes you in immediately.</p>
+        <p className="text-sm text-vault-muted">
+          Scanning fills the room code. Entry happens only after you tap
+          {' '}
+          <span className="font-medium text-vault-text">Join room</span>.
+        </p>
         <button
           type="submit"
-          className="rounded-full bg-vault-accent px-5 py-3 text-sm font-medium text-white transition hover:bg-vault-accentStrong disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-full bg-vault-accent px-5 py-3 text-sm font-medium text-white transition hover:bg-vault-accentStrong disabled:cursor-not-allowed disabled:opacity-60 md:w-auto"
           disabled={loading}
         >
           {loading ? 'Joining room...' : 'Join room'}

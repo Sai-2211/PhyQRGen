@@ -18,18 +18,18 @@ export default function BlochSphere({ entropyMeasure = 0, label = 'Quantum state
 
   return (
     <div className="rounded-[30px] border border-vault-border bg-white p-5 shadow-vault-soft">
-      <div className="flex items-center justify-between gap-4">
-        <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-vault-muted">Bloch sphere</p>
           <p className="mt-2 text-lg font-semibold text-vault-text">{label}</p>
         </div>
-        <div className="rounded-full bg-vault-surface px-3 py-1 text-xs font-medium text-vault-muted">
+        <div className="w-fit rounded-full bg-vault-surface px-3 py-1 text-xs font-medium text-vault-muted">
           entropy {normalizedEntropy.toFixed(2)}
         </div>
       </div>
 
       <div className="mt-5 flex justify-center">
-        <svg viewBox="0 0 220 220" className="h-56 w-56">
+        <svg viewBox="0 0 220 220" className="h-auto w-full max-w-[240px]">
           <defs>
             <radialGradient id="sphereFill" cx="35%" cy="30%">
               <stop offset="0%" stopColor="#ffffff" />

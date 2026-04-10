@@ -63,15 +63,17 @@ export default function CreateSession({ onCreated }) {
   if (result) {
     return (
       <section className="space-y-6">
-        <div className="rounded-[30px] border border-vault-border bg-vault-panel p-6 shadow-vault">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
+        <div className="vault-panel overflow-hidden rounded-[30px] p-6 shadow-vault">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-vault-muted">
                 Session created
               </p>
-              <h2 className="mt-2 text-3xl font-semibold text-vault-text">{result.shortCode}</h2>
+              <h2 className="mt-2 break-all text-2xl font-semibold tracking-[0.12em] text-vault-text sm:text-3xl">
+                {result.shortCode}
+              </h2>
             </div>
-            <div className="rounded-full bg-vault-surface px-3 py-1 text-xs font-medium text-vault-muted">
+            <div className="w-fit rounded-full bg-vault-surface px-3 py-1 text-xs font-medium text-vault-muted">
               Expires {new Date(result.expiresAt).toLocaleTimeString()}
             </div>
           </div>
@@ -89,16 +91,16 @@ export default function CreateSession({ onCreated }) {
   }
 
   return (
-    <form className="vault-panel rounded-[34px] p-6 shadow-vault lg:p-8" onSubmit={handleCreate}>
+    <form className="vault-panel overflow-hidden rounded-[34px] p-6 shadow-vault lg:p-8" onSubmit={handleCreate}>
       <div className="flex flex-col gap-3">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-vault-muted">Create room</p>
-        <h2 className="text-3xl font-semibold text-vault-text">Start a private session</h2>
+        <h2 className="text-3xl font-semibold text-vault-text sm:text-4xl">Start a private session</h2>
         <p className="max-w-2xl text-sm leading-6 text-vault-muted">
           Generate a temporary room, share a QR invite, and keep the experience focused on text and secure attachments.
         </p>
       </div>
 
-      <div className="mt-8 grid gap-5 md:grid-cols-2">
+      <div className="mt-8 grid gap-5 lg:grid-cols-2">
         <label className="block text-sm text-vault-muted">
           Display name
           <input
@@ -123,7 +125,7 @@ export default function CreateSession({ onCreated }) {
         </label>
       </div>
 
-      <div className="mt-5 grid gap-5 md:grid-cols-2">
+      <div className="mt-5 grid gap-5 lg:grid-cols-2">
         <label className="block text-sm text-vault-muted">
           Session duration
           <select
@@ -178,7 +180,7 @@ export default function CreateSession({ onCreated }) {
         </p>
         <button
           type="submit"
-          className="rounded-full bg-vault-accent px-5 py-3 text-sm font-medium text-white transition hover:bg-vault-accentStrong disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-full bg-vault-accent px-5 py-3 text-sm font-medium text-white transition hover:bg-vault-accentStrong disabled:cursor-not-allowed disabled:opacity-60 md:w-auto"
           disabled={loading}
         >
           {loading ? 'Creating room...' : 'Create room'}

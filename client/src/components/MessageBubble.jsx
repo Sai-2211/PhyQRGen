@@ -40,27 +40,27 @@ export default function MessageBubble({ message }) {
   return (
     <article className={`flex ${outgoing ? 'justify-end' : 'justify-start'} animate-fadeRise`}>
       <div
-        className={`max-w-[88%] rounded-[28px] border px-4 py-3 shadow-vault-soft ${
+        className={`max-w-full overflow-hidden rounded-[28px] border px-4 py-3 shadow-vault-soft sm:max-w-[92%] lg:max-w-[88%] ${
           outgoing
             ? 'border-blue-100 bg-blue-50 text-vault-text'
             : 'border-vault-border bg-white text-vault-text'
         }`}
       >
-        <div className="flex items-center justify-between gap-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-vault-muted">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="break-words text-xs font-semibold uppercase tracking-[0.14em] text-vault-muted">
             {message.senderName || message.senderId}
           </p>
           <p className="text-[11px] text-vault-muted">{new Date(message.timestamp).toLocaleTimeString()}</p>
         </div>
 
         {message.type === 'text' ? (
-          <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-vault-text">{message.content}</p>
+          <p className="mt-3 break-words whitespace-pre-wrap text-sm leading-6 text-vault-text">{message.content}</p>
         ) : null}
 
         {message.type === 'file' ? (
           <div className="mt-3 space-y-3">
             <div>
-              <p className="text-sm font-medium text-vault-text">{message.file?.name}</p>
+              <p className="break-words text-sm font-medium text-vault-text">{message.file?.name}</p>
               <p className="mt-1 text-xs text-vault-muted">
                 {(message.file?.mimeType || 'Attachment').replace('/', ' · ')}
               </p>

@@ -7,7 +7,7 @@ import NukeButton from './NukeButton';
 
 function AttachmentGuide() {
   return (
-    <div className="rounded-3xl border border-vault-border bg-vault-panel p-4 shadow-vault">
+    <div className="vault-panel rounded-3xl p-4 shadow-vault">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-vault-muted">
         Attachments
       </p>
@@ -23,17 +23,17 @@ function AttachmentGuide() {
 
 function ParticipantList({ participants, selfSocketId, isCreator }) {
   return (
-    <div className="space-y-2">
+    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
       {participants.map((participant) => {
         const isSelf = participant.socketId === selfSocketId;
 
         return (
           <div
             key={participant.socketId}
-            className="rounded-2xl border border-vault-border bg-vault-panel p-3 shadow-vault-soft"
+            className="vault-panel rounded-2xl p-3 shadow-vault-soft"
           >
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-medium text-vault-text">
+              <p className="min-w-0 break-words text-sm font-medium text-vault-text">
                 {participant.displayName || participant.socketId.slice(0, 8)}
                 {isSelf ? ' (you)' : ''}
               </p>
@@ -62,9 +62,9 @@ function ShareModal({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/35 p-4 backdrop-blur-md">
-      <div className="w-full max-w-lg rounded-[32px] border border-vault-border bg-vault-panel p-6 shadow-vault">
+      <div className="vault-panel w-full max-w-lg overflow-hidden rounded-[32px] p-6 shadow-vault">
         <div className="flex items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-vault-muted">
               Share room
             </p>
@@ -79,7 +79,7 @@ function ShareModal({
           </button>
         </div>
 
-        <div className="mt-6 grid gap-6 md:grid-cols-[220px_1fr]">
+        <div className="mt-6 grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
           <div className="rounded-[28px] border border-vault-border bg-white p-4 shadow-vault-soft">
             <QRCodeSVG
               id="room-qr-svg"
@@ -90,12 +90,14 @@ function ShareModal({
             />
           </div>
 
-          <div className="space-y-4">
+          <div className="min-w-0 space-y-4">
             <div className="rounded-3xl border border-vault-border bg-vault-surface p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-vault-muted">
                 Room code
               </p>
-              <p className="mt-2 text-2xl font-semibold tracking-[0.2em] text-vault-text">{shortCode}</p>
+              <p className="mt-2 break-all text-xl font-semibold tracking-[0.12em] text-vault-text sm:text-2xl">
+                {shortCode}
+              </p>
               <p className="mt-2 break-all text-xs text-vault-muted">{inviteLink}</p>
             </div>
 
@@ -141,7 +143,7 @@ function ShareModal({
 function LeaveModal({ onClose, onLeave }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/35 p-4 backdrop-blur-md">
-      <div className="w-full max-w-md rounded-[32px] border border-vault-border bg-vault-panel p-6 shadow-vault">
+      <div className="vault-panel w-full max-w-md overflow-hidden rounded-[32px] p-6 shadow-vault">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-vault-muted">Leave room</p>
         <h2 className="mt-2 text-2xl font-semibold text-vault-text">Leave this session?</h2>
         <p className="mt-3 text-sm leading-6 text-vault-muted">
@@ -288,15 +290,15 @@ export default function ChatRoom({
 
   return (
     <>
-      <main className="mx-auto min-h-screen w-full max-w-[1400px] px-4 py-6 lg:px-8">
-        <section className="grid min-h-[calc(100vh-3rem)] gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
-          <aside className="space-y-4">
+      <main className="mx-auto min-h-screen w-full max-w-[1440px] px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
+        <section className="grid gap-6 xl:min-h-[calc(100vh-3rem)] xl:grid-cols-[minmax(280px,320px)_minmax(0,1fr)]">
+          <aside className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 xl:content-start">
             <div className="vault-panel rounded-[32px] p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-vault-muted">
                 Participants
               </p>
-              <div className="mt-2 flex items-end justify-between gap-4">
-                <div>
+              <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div className="min-w-0">
                   <p className="text-2xl font-semibold text-vault-text">{onlineCount}</p>
                   <p className="text-sm text-vault-muted">currently in the room</p>
                 </div>
@@ -313,20 +315,22 @@ export default function ChatRoom({
             <AttachmentGuide />
           </aside>
 
-          <section className="vault-panel flex min-h-0 flex-col rounded-[36px]">
+          <section className="vault-panel flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[36px]">
             <header className="border-b border-vault-border px-5 py-5 lg:px-7">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-vault-muted">
                     Secure room
                   </p>
-                  <h1 className="mt-2 text-3xl font-semibold text-vault-text">{shortCode}</h1>
+                  <h1 className="mt-2 break-all text-2xl font-semibold tracking-[0.12em] text-vault-text sm:text-3xl">
+                    {shortCode}
+                  </h1>
                   <p className="mt-2 text-sm text-vault-muted">
                     {selfParticipant?.displayName || 'Guest'} in a temporary encrypted conversation.
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                   {isCreator && qrPayload ? (
                     <button
                       type="button"
@@ -348,7 +352,7 @@ export default function ChatRoom({
               </div>
             </header>
 
-            <section ref={feedRef} className="scroll-slim flex-1 space-y-4 overflow-y-auto px-5 py-5 lg:px-7">
+            <section ref={feedRef} className="scroll-slim flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-5 lg:px-7">
               {messages.length === 0 ? (
                 <div className="rounded-[28px] border border-dashed border-vault-border bg-vault-surface px-5 py-8 text-center">
                   <p className="text-base font-medium text-vault-text">Start the conversation</p>
@@ -363,7 +367,7 @@ export default function ChatRoom({
               ))}
             </section>
 
-            <footer className="border-t border-vault-border px-5 py-5 lg:px-7">
+            <footer className="border-t border-vault-border px-4 py-5 sm:px-5 lg:px-7">
               <div className="rounded-[28px] border border-vault-border bg-vault-surface p-4">
                 <form className="flex flex-col gap-3" onSubmit={handleSendText}>
                   <textarea
@@ -378,7 +382,7 @@ export default function ChatRoom({
                     <MediaUpload onSend={onSendFile} />
                     <button
                       type="submit"
-                      className="rounded-full bg-vault-accent px-5 py-3 text-sm font-medium text-white transition hover:bg-vault-accentStrong"
+                      className="w-full rounded-full bg-vault-accent px-5 py-3 text-sm font-medium text-white transition hover:bg-vault-accentStrong lg:w-auto"
                     >
                       Send message
                     </button>

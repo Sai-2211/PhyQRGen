@@ -21,6 +21,7 @@ export default function Room({ sessionRef, navigation, initialPayload }) {
   });
   const [messages, setMessages] = useState([]);
   const [cryptoError, setCryptoError] = useState('');
+  const [joinRequested, setJoinRequested] = useState(() => Boolean(initialPayload?.creatorSecret));
   const handleSessionEnded = useCallback(() => { }, []);
 
   const createdObjectUrlsRef = useRef([]);
@@ -67,7 +68,7 @@ export default function Room({ sessionRef, navigation, initialPayload }) {
     };
   }, [sessionRef]);
 
-  const canAttemptJoin = Boolean(
+  const canEnterRoom = Boolean(
     resolvedSessionId &&
     identity.displayName.trim() &&
     (!requiresPasscode || /^\d{4,8}$/.test(identity.passcode || ''))
@@ -75,7 +76,7 @@ export default function Room({ sessionRef, navigation, initialPayload }) {
 
   const session = useSession({
     socket,
-    sessionId: canAttemptJoin ? resolvedSessionId : null,
+    sessionId: joinRequested && canEnterRoom ? resolvedSessionId : null,
     displayName: identity.displayName,
     passcode: identity.passcode,
     creatorSecret: identity.creatorSecret,
@@ -84,6 +85,18 @@ export default function Room({ sessionRef, navigation, initialPayload }) {
   });
 
   const isCreator = Boolean(socket?.id && session.creatorSocketId === socket.id);
+
+  useEffect(() => {
+    setJoinRequested(Boolean(initialPayload?.creatorSecret));
+  }, [initialPayload?.creatorSecret, resolvedSessionId]);
+
+  useEffect(() => {
+    if (!session.joinError) {
+      return;
+    }
+
+    setJoinRequested(false);
+  }, [session.joinError]);
 
   useEffect(() => {
     if (!socket || !keyPair?.secretKey) {
@@ -297,7 +310,17 @@ export default function Room({ sessionRef, navigation, initialPayload }) {
     createdObjectUrlsRef.current = [];
     setMessages([]);
     setKeyPair({ publicKey: '', secretKey: '' });
+    setJoinRequested(false);
     navigation.goHome();
+  }
+
+  function handleEnterRoom(event) {
+    event.preventDefault();
+    if (!canEnterRoom) {
+      return;
+    }
+
+    setJoinRequested(true);
   }
 
   if (validationLoading) {
@@ -328,51 +351,84 @@ export default function Room({ sessionRef, navigation, initialPayload }) {
     );
   }
 
-  if (!canAttemptJoin) {
+  if (!session.joined) {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-3xl items-center justify-center px-4 py-10">
-        <section className="vault-panel w-full rounded-2xl p-6 md:p-8">
-          <h1 className="text-xl font-semibold text-vault-text">Enter Session Identity</h1>
-          <p className="mt-2 text-sm text-vault-muted">
-            Provide a display name {requiresPasscode ? 'and passcode' : ''} to enter this room.
-          </p>
+      <main className="mx-auto flex min-h-screen w-full max-w-3xl items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
+        <section className="vault-panel w-full overflow-hidden rounded-[32px] p-6 shadow-vault sm:p-8">
+          <div className="flex flex-col gap-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-vault-muted">
+              Enter room
+            </p>
+            <h1 className="text-2xl font-semibold text-vault-text sm:text-3xl">Confirm your room identity</h1>
+            <p className="max-w-xl text-sm leading-6 text-vault-muted">
+              Add the name other participants should see. You will only enter this room after you tap
+              {' '}
+              <span className="font-medium text-vault-text">Enter room</span>.
+            </p>
+          </div>
 
-          <label className="mt-5 block text-sm text-vault-muted">
-            Display name
-            <input
-              className="mt-2 w-full rounded-lg border border-vault-accent/30 bg-vault-panel2 px-3 py-2 text-vault-text outline-none focus:border-vault-accent"
-              value={identity.displayName}
-              onChange={(event) =>
-                setIdentity((current) => ({
-                  ...current,
-                  displayName: event.target.value
-                }))
-              }
-              maxLength={40}
-            />
-          </label>
+          <form className="mt-8 space-y-5" onSubmit={handleEnterRoom}>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <label className="block text-sm text-vault-muted">
+                Display name
+                <input
+                  className="mt-2 w-full rounded-[22px] border border-vault-border bg-white px-4 py-3 text-vault-text outline-none transition focus:border-vault-accent"
+                  value={identity.displayName}
+                  onChange={(event) =>
+                    setIdentity((current) => ({
+                      ...current,
+                      displayName: event.target.value
+                    }))
+                  }
+                  maxLength={40}
+                  placeholder="Your name"
+                />
+              </label>
 
-          {requiresPasscode ? (
-            <label className="mt-4 block text-sm text-vault-muted">
-              Passcode (4-8 digits)
-              <input
-                type="password"
-                inputMode="numeric"
-                className="mt-2 w-full rounded-lg border border-vault-accent/30 bg-vault-panel2 px-3 py-2 text-vault-text outline-none focus:border-vault-accent"
-                value={identity.passcode}
-                onChange={(event) =>
-                  setIdentity((current) => ({
-                    ...current,
-                    passcode: event.target.value.replace(/\D/g, '').slice(0, 8)
-                  }))
-                }
-              />
-            </label>
-          ) : null}
+              {requiresPasscode ? (
+                <label className="block text-sm text-vault-muted">
+                  Passcode (4-8 digits)
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    className="mt-2 w-full rounded-[22px] border border-vault-border bg-white px-4 py-3 text-vault-text outline-none transition focus:border-vault-accent"
+                    value={identity.passcode}
+                    onChange={(event) =>
+                      setIdentity((current) => ({
+                        ...current,
+                        passcode: event.target.value.replace(/\D/g, '').slice(0, 8)
+                      }))
+                    }
+                    placeholder="Enter passcode"
+                  />
+                </label>
+              ) : (
+                <div className="rounded-[24px] border border-vault-border bg-vault-surface p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-vault-muted">Room status</p>
+                  <p className="mt-2 text-sm leading-6 text-vault-text">
+                    This room does not need a passcode. Your session stays local until you confirm entry.
+                  </p>
+                </div>
+              )}
+            </div>
 
-          <p className="mt-6 text-xs text-vault-muted">
-            Join starts automatically once required fields are valid.
-          </p>
+            {session.joinError ? <p className="text-sm text-vault-danger">{session.joinError}</p> : null}
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-vault-muted">
+                Room ID:
+                {' '}
+                <span className="break-all font-medium text-vault-text">{resolvedSessionId || sessionRef}</span>
+              </p>
+              <button
+                type="submit"
+                className="w-full rounded-full bg-vault-accent px-5 py-3 text-sm font-medium text-white transition hover:bg-vault-accentStrong disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                disabled={!canEnterRoom || joinRequested}
+              >
+                {joinRequested ? 'Entering room...' : 'Enter room'}
+              </button>
+            </div>
+          </form>
         </section>
       </main>
     );

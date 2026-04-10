@@ -25,7 +25,7 @@ export default function SessionTimer({ expiresAt }) {
 
   return (
     <div
-      className={`inline-flex flex-col rounded-[22px] border px-4 py-3 text-left ${
+      className={`inline-flex w-full flex-col rounded-[22px] border px-4 py-3 text-left sm:w-auto ${
         underFiveMinutes
           ? 'border-rose-200 bg-rose-50 text-vault-danger'
           : 'border-vault-border bg-white text-vault-text'
