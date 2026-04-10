@@ -70,7 +70,7 @@ export default function MessageBubble({ message }) {
         ) : null}
 
         <div className="mt-3 inline-flex rounded-full bg-vault-surface px-3 py-1 text-[11px] font-medium text-vault-muted">
-          Encrypted in browser
+          End-to-end encrypted
         </div>
       </div>
     </article>
