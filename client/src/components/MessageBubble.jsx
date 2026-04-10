@@ -1,28 +1,35 @@
-function FilePreview({ message }) {
-  const file = message.file;
+function FilePreview({ file }) {
   if (!file) {
     return null;
   }
 
   if (file.mimeType?.startsWith('image/')) {
-    return <img src={file.dataUrl} alt={file.name} className="max-h-56 rounded-lg object-contain" />;
+    return <img src={file.dataUrl} alt={file.name} className="max-h-64 rounded-[22px] object-contain" />;
   }
 
   if (file.mimeType?.startsWith('audio/')) {
     return <audio controls src={file.dataUrl} className="max-w-full" />;
   }
 
-  if (file.mimeType?.startsWith('video/')) {
-    return <video controls src={file.dataUrl} className="max-h-64 rounded-lg" />;
+  if (file.mimeType === 'application/pdf') {
+    return (
+      <a
+        className="inline-flex items-center gap-2 rounded-full border border-vault-border bg-white px-4 py-2 text-sm font-medium text-vault-text transition hover:bg-vault-surface"
+        href={file.dataUrl}
+        download={file.name}
+      >
+        Open PDF
+      </a>
+    );
   }
 
   return (
     <a
-      className="inline-flex rounded border border-vault-accent/45 px-3 py-2 text-xs text-vault-accent"
+      className="inline-flex items-center gap-2 rounded-full border border-vault-border bg-white px-4 py-2 text-sm font-medium text-vault-text transition hover:bg-vault-surface"
       href={file.dataUrl}
       download={file.name}
     >
-      Download {file.name}
+      Download file
     </a>
   );
 }
@@ -33,27 +40,37 @@ export default function MessageBubble({ message }) {
   return (
     <article className={`flex ${outgoing ? 'justify-end' : 'justify-start'} animate-fadeRise`}>
       <div
-        className={`max-w-[85%] rounded-xl border px-3 py-2 ${
+        className={`max-w-[88%] rounded-[28px] border px-4 py-3 shadow-vault-soft ${
           outgoing
-            ? 'border-vault-accent/35 bg-vault-accent/10 text-vault-text'
-            : 'border-vault-accentAlt/30 bg-vault-accentAlt/10 text-vault-text'
+            ? 'border-blue-100 bg-blue-50 text-vault-text'
+            : 'border-vault-border bg-white text-vault-text'
         }`}
       >
-        <p className="text-[10px] uppercase tracking-[0.12em] text-vault-muted">
-          {message.senderName || message.senderId}
-        </p>
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-vault-muted">
+            {message.senderName || message.senderId}
+          </p>
+          <p className="text-[11px] text-vault-muted">{new Date(message.timestamp).toLocaleTimeString()}</p>
+        </div>
 
-        {message.type === 'text' ? <p className="mt-1 whitespace-pre-wrap text-sm">{message.content}</p> : null}
+        {message.type === 'text' ? (
+          <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-vault-text">{message.content}</p>
+        ) : null}
+
         {message.type === 'file' ? (
-          <div className="mt-2 space-y-2 text-sm">
-            <p>{message.file?.name}</p>
-            <FilePreview message={message} />
+          <div className="mt-3 space-y-3">
+            <div>
+              <p className="text-sm font-medium text-vault-text">{message.file?.name}</p>
+              <p className="mt-1 text-xs text-vault-muted">
+                {(message.file?.mimeType || 'Attachment').replace('/', ' · ')}
+              </p>
+            </div>
+            <FilePreview file={message.file} />
           </div>
         ) : null}
 
-        <div className="mt-2 flex items-center justify-between gap-3 text-[10px] text-vault-muted">
-          <span>🔒 encrypted</span>
-          <span>{new Date(message.timestamp).toLocaleTimeString()}</span>
+        <div className="mt-3 inline-flex rounded-full bg-vault-surface px-3 py-1 text-[11px] font-medium text-vault-muted">
+          Encrypted in browser
         </div>
       </div>
     </article>

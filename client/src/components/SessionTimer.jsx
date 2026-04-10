@@ -25,14 +25,17 @@ export default function SessionTimer({ expiresAt }) {
 
   return (
     <div
-      className={`rounded-lg border px-3 py-2 text-sm font-semibold tracking-[0.2em] ${
+      className={`inline-flex flex-col rounded-[22px] border px-4 py-3 text-left ${
         underFiveMinutes
-          ? 'border-vault-danger/60 bg-vault-danger/10 text-vault-danger'
-          : 'border-vault-accent/40 bg-vault-accent/10 text-vault-accent'
+          ? 'border-rose-200 bg-rose-50 text-vault-danger'
+          : 'border-vault-border bg-white text-vault-text'
       }`}
-      title="Session timer is locked and cannot be modified"
+      title="This timer is locked when the session is created."
     >
-      {formatDuration(remainingMs)}
+      <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-vault-muted">
+        Time left
+      </span>
+      <span className="mt-1 text-base font-semibold tracking-[0.14em]">{formatDuration(remainingMs)}</span>
     </div>
   );
 }

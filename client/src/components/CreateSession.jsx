@@ -3,11 +3,11 @@ import API from '../api';
 import QuantumProcess from './QuantumProcess';
 
 const presetDurations = [
-  { label: '15 min', value: 15 * 60 },
-  { label: '30 min', value: 30 * 60 },
-  { label: '1 hr', value: 60 * 60 },
-  { label: '2 hr', value: 2 * 60 * 60 },
-  { label: '4 hr', value: 4 * 60 * 60 },
+  { label: '15 minutes', value: 15 * 60 },
+  { label: '30 minutes', value: 30 * 60 },
+  { label: '1 hour', value: 60 * 60 },
+  { label: '2 hours', value: 2 * 60 * 60 },
+  { label: '4 hours', value: 4 * 60 * 60 },
   { label: 'Custom', value: 'custom' }
 ];
 
@@ -25,6 +25,7 @@ export default function CreateSession({ onCreated }) {
     if (durationChoice === 'custom') {
       return Math.min(24 * 60 * 60, Math.max(15 * 60, Number(customHours || 1) * 60 * 60));
     }
+
     return Number(durationChoice);
   }, [durationChoice, customHours]);
 
@@ -53,7 +54,7 @@ export default function CreateSession({ onCreated }) {
       setResult(next);
       onCreated?.(next);
     } catch (requestError) {
-      setError(requestError?.response?.data?.error || 'Unable to create session');
+      setError(requestError?.response?.data?.error || 'Unable to create session.');
     } finally {
       setLoading(false);
     }
@@ -61,43 +62,21 @@ export default function CreateSession({ onCreated }) {
 
   if (result) {
     return (
-      <section className="w-full space-y-5">
-        {/* Session created badge */}
-        <div className="flex items-center justify-center gap-3">
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '6px 16px', borderRadius: 999,
-            background: 'rgba(0,255,136,0.12)',
-            border: '1px solid rgba(0,255,136,0.35)'
-          }}>
-            <span style={{ fontSize: 14 }}>✓</span>
-            <span style={{ fontSize: 12, color: '#00ff88', fontWeight: 700, letterSpacing: '0.15em' }}>
-              SESSION CREATED
-            </span>
+      <section className="space-y-6">
+        <div className="rounded-[30px] border border-vault-border bg-vault-panel p-6 shadow-vault">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-vault-muted">
+                Session created
+              </p>
+              <h2 className="mt-2 text-3xl font-semibold text-vault-text">{result.shortCode}</h2>
+            </div>
+            <div className="rounded-full bg-vault-surface px-3 py-1 text-xs font-medium text-vault-muted">
+              Expires {new Date(result.expiresAt).toLocaleTimeString()}
+            </div>
           </div>
         </div>
 
-        {/* Session meta info */}
-        <div style={{
-          borderRadius: 12,
-          border: '1px solid rgba(0,212,255,0.2)',
-          background: 'rgba(0,0,0,0.4)',
-          padding: '12px 16px',
-          display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center'
-        }}>
-          <div>
-            <p style={{ fontSize: 9, color: '#7f9cab', textTransform: 'uppercase', letterSpacing: '0.2em', margin: 0 }}>Session Code</p>
-            <p style={{ fontSize: 20, color: '#00ff88', fontWeight: 800, letterSpacing: '0.25em', margin: '2px 0 0' }}>{result.shortCode}</p>
-          </div>
-          <div style={{ width: 1, height: 36, background: 'rgba(0,212,255,0.2)' }} />
-          <div>
-            <p style={{ fontSize: 9, color: '#7f9cab', textTransform: 'uppercase', letterSpacing: '0.2em', margin: 0 }}>Expires</p>
-            <p style={{ fontSize: 12, color: '#ecf8ff', margin: '3px 0 0' }}>{new Date(result.expiresAt).toLocaleString()}</p>
-          </div>
-          <div style={{ width: 1, height: 36, background: 'rgba(0,212,255,0.2)', display: 'none' }} />
-        </div>
-
-        {/* ★ Main Feature — Quantum Process Visualizer */}
         <QuantumProcess
           entropyBytes={result.entropyString || ''}
           qrngSource={result.qrngSource}
@@ -110,101 +89,101 @@ export default function CreateSession({ onCreated }) {
   }
 
   return (
-    <form className="vault-panel rounded-2xl p-6 md:p-8" onSubmit={handleCreate}>
-      <h2 className="text-lg font-semibold text-vault-text">Create Secure Session</h2>
-      <p className="mt-1 text-sm text-vault-muted">
-        Create a quantum-encrypted ephemeral room. Entropy is sourced from the ANU Quantum Random Number Generator.
-      </p>
+    <form className="vault-panel rounded-[34px] p-6 shadow-vault lg:p-8" onSubmit={handleCreate}>
+      <div className="flex flex-col gap-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-vault-muted">Create room</p>
+        <h2 className="text-3xl font-semibold text-vault-text">Start a private session</h2>
+        <p className="max-w-2xl text-sm leading-6 text-vault-muted">
+          Generate a temporary room, share a QR invite, and keep the experience focused on text and secure attachments.
+        </p>
+      </div>
 
-      <label className="mt-6 block text-sm text-vault-muted">
-        Nickname (optional)
-        <input
-          className="mt-2 w-full rounded-lg border border-vault-accent/30 bg-vault-panel2 px-3 py-2 text-vault-text outline-none focus:border-vault-accent"
-          value={nickname}
-          onChange={(event) => setNickname(event.target.value)}
-          maxLength={40}
-          placeholder="CipherFox"
-        />
-      </label>
+      <div className="mt-8 grid gap-5 md:grid-cols-2">
+        <label className="block text-sm text-vault-muted">
+          Display name
+          <input
+            className="mt-2 w-full rounded-[22px] border border-vault-border bg-white px-4 py-3 text-vault-text outline-none transition focus:border-vault-accent"
+            value={nickname}
+            onChange={(event) => setNickname(event.target.value)}
+            maxLength={40}
+            placeholder="Host name"
+          />
+        </label>
 
-      <label className="mt-4 block text-sm text-vault-muted">
-        Duration
-        <select
-          className="mt-2 w-full rounded-lg border border-vault-accent/30 bg-vault-panel2 px-3 py-2 text-vault-text outline-none focus:border-vault-accent"
-          value={durationChoice}
-          onChange={(event) => {
-            const value = event.target.value;
-            setDurationChoice(value === 'custom' ? 'custom' : Number(value));
-          }}
-        >
-          {presetDurations.map((option) => (
-            <option key={String(option.value)} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
+        <label className="block text-sm text-vault-muted">
+          Max participants
+          <input
+            type="number"
+            min={2}
+            max={50}
+            className="mt-2 w-full rounded-[22px] border border-vault-border bg-white px-4 py-3 text-vault-text outline-none transition focus:border-vault-accent"
+            value={maxParticipants}
+            onChange={(event) => setMaxParticipants(event.target.value)}
+          />
+        </label>
+      </div>
+
+      <div className="mt-5 grid gap-5 md:grid-cols-2">
+        <label className="block text-sm text-vault-muted">
+          Session duration
+          <select
+            className="mt-2 w-full rounded-[22px] border border-vault-border bg-white px-4 py-3 text-vault-text outline-none transition focus:border-vault-accent"
+            value={durationChoice}
+            onChange={(event) => {
+              const value = event.target.value;
+              setDurationChoice(value === 'custom' ? 'custom' : Number(value));
+            }}
+          >
+            {presetDurations.map((option) => (
+              <option key={String(option.value)} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block text-sm text-vault-muted">
+          Optional passcode
+          <input
+            type="password"
+            inputMode="numeric"
+            pattern="\d{4,8}"
+            className="mt-2 w-full rounded-[22px] border border-vault-border bg-white px-4 py-3 text-vault-text outline-none transition focus:border-vault-accent"
+            value={passcode}
+            onChange={(event) => setPasscode(event.target.value.replace(/\D/g, '').slice(0, 8))}
+            placeholder="4 to 8 digits"
+          />
+        </label>
+      </div>
 
       {durationChoice === 'custom' ? (
-        <label className="mt-4 block text-sm text-vault-muted">
-          Custom duration (hours, max 24)
+        <label className="mt-5 block text-sm text-vault-muted">
+          Custom duration in hours
           <input
             type="number"
             min={1}
             max={24}
-            className="mt-2 w-full rounded-lg border border-vault-accent/30 bg-vault-panel2 px-3 py-2 text-vault-text outline-none focus:border-vault-accent"
+            className="mt-2 w-full rounded-[22px] border border-vault-border bg-white px-4 py-3 text-vault-text outline-none transition focus:border-vault-accent"
             value={customHours}
             onChange={(event) => setCustomHours(event.target.value)}
           />
         </label>
       ) : null}
 
-      <label className="mt-4 block text-sm text-vault-muted">
-        Max participants (2-50)
-        <input
-          type="number"
-          min={2}
-          max={50}
-          className="mt-2 w-full rounded-lg border border-vault-accent/30 bg-vault-panel2 px-3 py-2 text-vault-text outline-none focus:border-vault-accent"
-          value={maxParticipants}
-          onChange={(event) => setMaxParticipants(event.target.value)}
-        />
-      </label>
+      {error ? <p className="mt-5 text-sm text-vault-danger">{error}</p> : null}
 
-      <label className="mt-4 block text-sm text-vault-muted">
-        Passcode (optional, 4-8 digits)
-        <input
-          type="password"
-          inputMode="numeric"
-          pattern="\d{4,8}"
-          className="mt-2 w-full rounded-lg border border-vault-accent/30 bg-vault-panel2 px-3 py-2 text-vault-text outline-none focus:border-vault-accent"
-          value={passcode}
-          onChange={(event) => setPasscode(event.target.value.replace(/\D/g, '').slice(0, 8))}
-          placeholder="1234"
-        />
-      </label>
-
-      {error ? <p className="mt-4 text-sm text-vault-danger">{error}</p> : null}
-
-      <button
-        type="submit"
-        className="mt-6 w-full rounded-lg border border-vault-accentAlt/45 bg-vault-accentAlt/10 px-4 py-2 font-medium text-vault-accentAlt transition hover:bg-vault-accentAlt/20 disabled:opacity-50"
-        disabled={loading}
-      >
-        {loading ? (
-          <span className="flex items-center justify-center gap-2">
-            <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite', fontSize: 14 }}>⚛</span>
-            Fetching quantum entropy…
-          </span>
-        ) : (
-          '⚛ Create Quantum-Encrypted Session'
-        )}
-      </button>
-
-      {/* Quantum badge */}
-      <p style={{ textAlign: 'center', marginTop: 10, fontSize: 11, color: '#7f9cab' }}>
-        Session key derived from ANU Quantum Random Number Generator
-      </p>
+      <div className="mt-8 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <p className="text-sm text-vault-muted">
+          Quantum entropy is requested when the room is created.
+        </p>
+        <button
+          type="submit"
+          className="rounded-full bg-vault-accent px-5 py-3 text-sm font-medium text-white transition hover:bg-vault-accentStrong disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={loading}
+        >
+          {loading ? 'Creating room...' : 'Create room'}
+        </button>
+      </div>
     </form>
   );
 }

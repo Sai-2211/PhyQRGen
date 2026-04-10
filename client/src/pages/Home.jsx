@@ -7,90 +7,70 @@ export default function Home({ navigation }) {
   const [createdSession, setCreatedSession] = useState(null);
 
   return (
-    <main className="relative min-h-screen overflow-hidden px-4 py-8 md:px-8 md:py-10">
-      {/* Background glows */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-[-10%] top-[-15%] h-[280px] w-[280px] rounded-full bg-vault-accent/20 blur-3xl" />
-        <div className="absolute bottom-[-10%] right-[-8%] h-[240px] w-[240px] rounded-full bg-vault-accentAlt/20 blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[400px] w-[400px] rounded-full opacity-5"
-          style={{ background: 'radial-gradient(circle, rgba(168,85,247,0.4) 0%, transparent 70%)' }} />
-      </div>
+    <main className="page-shell min-h-screen px-4 py-8 lg:px-8 lg:py-10">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+        <section className="vault-panel rounded-[40px] p-8 shadow-vault lg:p-12">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_320px] lg:items-end">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-vault-muted">
+                Private rooms for text and files
+              </p>
+              <h1 className="mt-4 max-w-3xl text-5xl font-semibold tracking-tight text-vault-text lg:text-6xl">
+                VaultChat
+              </h1>
+              <p className="mt-5 max-w-2xl text-base leading-7 text-vault-muted">
+                A calmer, simpler room experience for temporary conversations. Create a private room, share a QR invite,
+                and exchange text, PDFs, images, and voice notes with end-to-end encryption.
+              </p>
+            </div>
 
-      <div className="relative mx-auto flex w-full max-w-4xl flex-col gap-8">
-        <header className="space-y-3 text-center">
-          <p className="text-xs uppercase tracking-[0.25em] text-vault-accent">⚛ Ephemeral Quantum Chat</p>
-          <h1 className="text-4xl font-semibold tracking-tight text-vault-text md:text-5xl">VaultChat</h1>
-          <p className="mx-auto max-w-2xl text-sm text-vault-muted md:text-base">
-            Time-locked private rooms powered by{' '}
-            <span style={{ color: '#00d4ff', fontWeight: 600 }}>quantum random number generation</span>.
-            No accounts. No history. No traces.
-          </p>
-        </header>
-
-        {/* Tab toggle */}
-        <section className="mx-auto flex w-full max-w-md gap-2 rounded-xl border border-vault-accent/25 bg-black/35 p-1">
-          <button
-            type="button"
-            className={`flex-1 rounded-lg px-3 py-2 text-sm transition ${
-              mode === 'create'
-                ? 'bg-vault-accent/20 text-vault-accent'
-                : 'text-vault-muted hover:text-vault-text'
-            }`}
-            onClick={() => {
-              setMode('create');
-              setCreatedSession(null);
-            }}
-          >
-            Create Session
-          </button>
-          <button
-            type="button"
-            className={`flex-1 rounded-lg px-3 py-2 text-sm transition ${
-              mode === 'join'
-                ? 'bg-vault-accent/20 text-vault-accent'
-                : 'text-vault-muted hover:text-vault-text'
-            }`}
-            onClick={() => setMode('join')}
-          >
-            Join Session
-          </button>
+            <div className="rounded-[32px] border border-vault-border bg-vault-surface p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-vault-muted">What changed</p>
+              <ul className="mt-4 space-y-3 text-sm leading-6 text-vault-text">
+                <li>Text-first room layout with stronger attachment handling.</li>
+                <li>Built-in QR scanning that resolves real room URLs correctly.</li>
+                <li>Quantum visualization through a Bloch sphere instead of the old neon pipeline.</li>
+              </ul>
+            </div>
+          </div>
         </section>
 
-        {/* Main content — wider to fit QuantumProcess */}
-        <section className="mx-auto w-full max-w-3xl">
+        <section className="flex w-full justify-center">
+          <div className="inline-flex rounded-full border border-vault-border bg-vault-panel p-1 shadow-vault-soft">
+            <button
+              type="button"
+              className={`rounded-full px-5 py-2.5 text-sm font-medium transition ${
+                mode === 'create' ? 'bg-vault-accent text-white' : 'text-vault-text'
+              }`}
+              onClick={() => {
+                setMode('create');
+                setCreatedSession(null);
+              }}
+            >
+              Create room
+            </button>
+            <button
+              type="button"
+              className={`rounded-full px-5 py-2.5 text-sm font-medium transition ${
+                mode === 'join' ? 'bg-vault-accent text-white' : 'text-vault-text'
+              }`}
+              onClick={() => setMode('join')}
+            >
+              Join room
+            </button>
+          </div>
+        </section>
+
+        <section className="mx-auto w-full max-w-5xl">
           {mode === 'create' ? (
             <>
-              <CreateSession
-                onCreated={(sessionData) => {
-                  setCreatedSession(sessionData);
-                }}
-              />
+              <CreateSession onCreated={(sessionData) => setCreatedSession(sessionData)} />
 
               {createdSession ? (
-                <div className="mt-5 flex justify-center">
+                <div className="mt-6 flex justify-center">
                   <button
                     type="button"
-                    style={{
-                      padding: '12px 32px',
-                      borderRadius: 10,
-                      fontSize: 14,
-                      fontWeight: 700,
-                      letterSpacing: '0.05em',
-                      border: '1px solid rgba(0,255,136,0.5)',
-                      background: 'linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,212,255,0.1))',
-                      color: '#00ff88',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      boxShadow: '0 0 24px rgba(0,255,136,0.2)'
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0,255,136,0.28), rgba(0,212,255,0.2))';
-                      e.currentTarget.style.boxShadow = '0 0 32px rgba(0,255,136,0.35)';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,212,255,0.1))';
-                      e.currentTarget.style.boxShadow = '0 0 24px rgba(0,255,136,0.2)';
-                    }}
+                    className="rounded-full bg-vault-accent px-6 py-3 text-sm font-medium text-white transition hover:bg-vault-accentStrong"
                     onClick={() =>
                       navigation.goToRoom(createdSession.sessionId, {
                         sessionRef: createdSession.sessionId,
@@ -98,7 +78,6 @@ export default function Home({ navigation }) {
                         passcode: createdSession.passcode,
                         creatorSecret: createdSession.creatorSecret,
                         source: 'create',
-                        // Pass QR data so host can share it in-room
                         qrPayload: createdSession.qrPayload,
                         shortCode: createdSession.shortCode,
                         entropyString: createdSession.entropyString,
@@ -107,7 +86,7 @@ export default function Home({ navigation }) {
                       })
                     }
                   >
-                    ⚡ Enter Secure Room
+                    Enter room
                   </button>
                 </div>
               ) : null}

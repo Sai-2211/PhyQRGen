@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import API from '../api';
 import ChatRoom from '../components/ChatRoom';
 import useSocket from '../hooks/useSocket';
 import useSession from '../hooks/useSession';
-import useWebRTC from '../hooks/useWebRTC';
 import { generateKeyPair } from '../crypto/keyExchange';
 import { encryptFileForRecipient, encryptTextForRecipient } from '../crypto/encrypt';
 import { decryptFileFromSender, decryptTextFromSender } from '../crypto/decrypt';
@@ -82,18 +81,6 @@ export default function Room({ sessionRef, navigation, initialPayload }) {
     creatorSecret: identity.creatorSecret,
     keyPair,
     onSessionEnded: handleSessionEnded
-  });
-
-  const participantIds = useMemo(
-    () => (session.participants || []).map((participant) => participant.socketId),
-    [session.participants]
-  );
-
-  const webRtc = useWebRTC({
-    socket,
-    selfSocketId: socket?.id,
-    participantIds,
-    sessionEnded: Boolean(session.endedReason)
   });
 
   const isCreator = Boolean(socket?.id && session.creatorSocketId === socket.id);
@@ -306,7 +293,6 @@ export default function Room({ sessionRef, navigation, initialPayload }) {
 
   function handleExitRoom() {
     session.leaveSession();
-    webRtc.endCall();
     createdObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
     createdObjectUrlsRef.current = [];
     setMessages([]);
@@ -424,18 +410,8 @@ export default function Room({ sessionRef, navigation, initialPayload }) {
         onSendFile={sendFile}
         onNuke={handleNuke}
         onLeave={handleExitRoom}
-        callState={{
-          localStream: webRtc.localStream,
-          remoteStreams: webRtc.remoteStreams,
-          callMode: webRtc.callMode,
-          onStartVideo: () => webRtc.startCall('video').catch(() => { }),
-          onStartAudio: () => webRtc.startCall('audio').catch(() => { }),
-          onShareScreen: () => webRtc.startCall('screen').catch(() => { }),
-          onEndCall: webRtc.endCall
-        }}
         endedReason={session.endedReason}
         qrPayload={initialPayload?.qrPayload || ''}
-        qrngSource={initialPayload?.qrngSource || 'quantum'}
         entropyString={initialPayload?.entropyString || ''}
       />
     </>

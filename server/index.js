@@ -12,7 +12,6 @@ const { createSessionRouter } = require('./routes/session');
 const createQrngRouter = require('./routes/qrng');
 const { registerSessionHandler } = require('./socket/sessionHandler');
 const { registerMessageHandler } = require('./socket/messageHandler');
-const { registerSignalingHandler } = require('./socket/signalingHandler');
 
 const PORT = Number(process.env.PORT || 3001);
 const QRNG_API_URL =
@@ -78,12 +77,6 @@ async function start() {
   const server = http.createServer(app);
   const createSessionRateLimit = createSessionCreateRateLimit();
 
-  // ✅ REQUEST LOGGER (NEW)
-  app.use((req, res, next) => {
-    console.log("➡️", req.method, req.url);
-    next();
-  });
-
   app.set('trust proxy', 1);
   app.use(setSecurityHeaders);
   app.use(enforceHttpsInProduction);
@@ -115,6 +108,7 @@ async function start() {
   const destroyingSessions = new Set();
 
   const io = new Server(server, {
+    maxHttpBufferSize: 40 * 1024 * 1024,
     cors: {
       origin: CLIENT_URL,
       methods: ['GET', 'POST']
@@ -188,9 +182,8 @@ async function start() {
     res.json({ ok: true });
   });
 
-  // ✅ REAL ERROR HANDLER (FIXED)
   app.use((error, req, res, next) => {
-    console.error("🔥 ERROR:", error);
+    console.error('Server error:', error);
 
     res.status(500).json({
       error: error.message,
@@ -200,7 +193,6 @@ async function start() {
   io.on('connection', (socket) => {
     registerSessionHandler({ io, socket, sessionStore, destroySessionNow });
     registerMessageHandler({ io, socket });
-    registerSignalingHandler({ io, socket });
   });
 
   server.listen(PORT, () => {
