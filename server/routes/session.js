@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 const express = require('express');
 const {
   fetchEntropyHex,
@@ -12,11 +12,43 @@ const MAX_DURATION_SECONDS = 24 * 60 * 60;
 const DEFAULT_DURATION_SECONDS = 30 * 60;
 const MIN_PARTICIPANTS = 2;
 const MAX_PARTICIPANTS = 50;
+const PASSCODE_ROUNDS = 12;
+const MAX_CREATE_ATTEMPTS = 3;
+const VALIDATION_WINDOW_MS = 60 * 1000;
+const VALIDATION_MAX_REQUESTS = 60;
+const MIN_VALIDATE_DURATION_MS = 75;
 
-function hashPasscode(passcode) {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const digest = crypto.scryptSync(String(passcode), salt, 32).toString('hex');
-  return `${salt}:${digest}`;
+async function hashPasscode(passcode) {
+  return bcrypt.hash(String(passcode), PASSCODE_ROUNDS);
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function createValidationRateLimit() {
+  const hits = new Map();
+
+  return function validateSessionRateLimit(req, res, next) {
+    const ip = req.ip || 'unknown';
+    const now = Date.now();
+    const currentHits = (hits.get(ip) || []).filter((timestamp) => now - timestamp < VALIDATION_WINDOW_MS);
+
+    if (currentHits.length >= VALIDATION_MAX_REQUESTS) {
+      return res.status(429).json({ error: 'Too many validation attempts' });
+    }
+
+    currentHits.push(now);
+    hits.set(ip, currentHits);
+    return next();
+  };
+}
+
+async function waitForMinimumValidationDuration(startedAt) {
+  const remaining = MIN_VALIDATE_DURATION_MS - (Date.now() - startedAt);
+  if (remaining > 0) {
+    await sleep(remaining);
+  }
 }
 
 function createSessionRouter({
@@ -26,6 +58,7 @@ function createSessionRouter({
   createSessionRateLimit
 }) {
   const router = express.Router();
+  const validateSessionRateLimit = createValidationRateLimit();
 
   router.post('/create', createSessionRateLimit, async (req, res, next) => {
     try {
@@ -47,47 +80,67 @@ function createSessionRouter({
         });
       }
 
-      const { bytes, source } = await fetchEntropyHex(qrngUrl);
-      const { sessionId } = deriveSessionEntropy(bytes);
+      let createdSession = null;
+      let entropyBytes = '';
+      let entropySource = 'fallback';
 
-      const createdAt = Date.now();
-      const expiresAt = createdAt + duration * 1000;
-      const shortCode = toShortCode(sessionId);
-      const creatorSecret = createCreatorSecret();
-      const session = {
-        sessionId,
-        createdAt,
-        expiresAt,
-        maxParticipants,
-        passcodeHash: passcodeInput ? hashPasscode(passcodeInput) : null,
-        participants: [],
-        participantProfiles: {},
-        publicKeys: {},
-        shortCode,
-        creatorSocketId: null,
-        creatorSecret
-      };
+      // Security fix: hash new passcodes with bcrypt and regenerate IDs if either the room ID or short code collides.
+      for (let attempt = 0; attempt < MAX_CREATE_ATTEMPTS; attempt += 1) {
+        const { bytes, source } = await fetchEntropyHex(qrngUrl);
+        // Security fix: Session IDs must use strict 256-bit crypto.randomBytes ONLY
+        const sessionId = require('crypto').randomBytes(32).toString('hex');
+        const createdAt = Date.now();
+        const expiresAt = createdAt + duration * 1000;
+        const shortCode = toShortCode(sessionId);
+        const creatorSecret = createCreatorSecret();
+        const session = {
+          sessionId,
+          createdAt,
+          expiresAt,
+          maxParticipants,
+          passcodeHash: passcodeInput ? await hashPasscode(passcodeInput) : null,
+          participants: [],
+          participantProfiles: {},
+          publicKeys: {},
+          shortCode,
+          creatorSocketId: null,
+          creatorSecret
+        };
 
-      await sessionStore.createSession(session, duration);
-      scheduleSessionExpiry(sessionId, expiresAt);
+        const created = await sessionStore.createSession(session, duration);
+        if (created) {
+          createdSession = session;
+          entropyBytes = bytes;
+          entropySource = source;
+          break;
+        }
+      }
+
+      if (!createdSession) {
+        return next(Object.assign(new Error('Unable to create session'), { status: 500 }));
+      }
+
+      scheduleSessionExpiry(createdSession.sessionId, createdSession.expiresAt);
 
       const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-      const qrPayload = `${clientUrl}/room/${sessionId}`;
+      const qrPayload = `${clientUrl}/room/${createdSession.sessionId}`;
       return res.status(201).json({
-        sessionId,
-        shortCode,
+        sessionId: createdSession.sessionId,
+        shortCode: createdSession.shortCode,
         qrPayload,
-        expiresAt,
-        qrngSource: source,
-        entropyString: bytes,
-        creatorSecret
+        expiresAt: createdSession.expiresAt,
+        qrngSource: entropySource,
+        entropyString: entropyBytes,
+        creatorSecret: createdSession.creatorSecret
       });
     } catch (error) {
       next(error);
     }
   });
 
-  router.get('/:sessionRef/validate', async (req, res, next) => {
+  router.get('/:sessionRef/validate', validateSessionRateLimit, async (req, res, next) => {
+    const startedAt = Date.now();
+
     try {
       const rawInput = String(req.params.sessionRef || '').trim().toUpperCase();
       const normalizedCode = /^[A-Z0-9]{8}$/.test(rawInput)
@@ -108,13 +161,16 @@ function createSessionRouter({
         session = await sessionStore.getSession(normalizedCode.toLowerCase());
       }
 
-      if (!session) {
+      if (!session || Date.now() >= Number(session.expiresAt)) {
+        await waitForMinimumValidationDuration(startedAt);
         return res.json({ valid: false });
       }
 
       const participantCount = (session.participants || []).length;
       const requiresPasscode = Boolean(session.passcodeHash);
 
+      // Security fix: keep invalid and expired lookups timing-similar while preserving the current valid-room response shape.
+      await waitForMinimumValidationDuration(startedAt);
       return res.json({
         valid: true,
         sessionId: resolvedSessionId,

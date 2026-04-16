@@ -11,29 +11,58 @@ class SessionStore {
     return `session:code:${shortCode}`;
   }
 
-  // ✅ SAFE PARSER (fixes your bug)
+  // Security fix: avoid logging raw serialized session payloads when Redis contains malformed data.
   parse(value) {
     if (!value) return null;
 
     try {
-      return typeof value === "string" ? JSON.parse(value) : value;
-    } catch (e) {
-      console.error("JSON parse error:", value);
+      return typeof value === 'string' ? JSON.parse(value) : value;
+    } catch (_error) {
+      console.error('JSON parse error for session payload');
       return null;
     }
+  }
+
+  cloneSession(session) {
+    return {
+      ...session,
+      participants: [...(session.participants || [])],
+      participantProfiles: { ...(session.participantProfiles || {}) },
+      publicKeys: { ...(session.publicKeys || {}) }
+    };
+  }
+
+  remainingSeconds(session) {
+    return Math.ceil((Number(session?.expiresAt || 0) - Date.now()) / 1000);
   }
 
   async createSession(session, ttlSeconds) {
     const sessionKey = this.sessionKey(session.sessionId);
     const shortCodeKey = this.shortCodeKey(session.shortCode);
 
-    await this.redis.set(sessionKey, JSON.stringify(session), {
-      ex: ttlSeconds,
-    });
+    // Security fix: reserve the session ID atomically so collisions cannot overwrite an existing room.
+    const createdSession = await this.redis.set(
+      sessionKey,
+      session,
+      { ex: ttlSeconds, nx: true }
+    );
 
-    await this.redis.set(shortCodeKey, session.sessionId, {
-      ex: ttlSeconds,
-    });
+    if (createdSession !== 'OK') {
+      return false;
+    }
+
+    const createdShortCode = await this.redis.set(
+      shortCodeKey,
+      session.sessionId,
+      { ex: ttlSeconds, nx: true }
+    );
+
+    if (createdShortCode !== 'OK') {
+      await this.redis.del(sessionKey);
+      return false;
+    }
+
+    return true;
   }
 
   async getSession(sessionId) {
@@ -62,37 +91,65 @@ class SessionStore {
     const session = this.parse(value);
     if (!session) return null;
 
-    const updated = updater({ ...session });
+    const updated = updater(this.cloneSession(session));
     if (!updated) return null;
 
-    await this.redis.set(key, JSON.stringify(updated));
+    // Security fix: never let session mutations clear the TTL or alter the immutable expiry timestamp.
+    if (updated.expiresAt !== session.expiresAt) {
+      console.warn('Blocked expiresAt mutation attempt for session metadata update');
+      return null;
+    }
+
+    const secondsRemaining = this.remainingSeconds(session);
+    if (secondsRemaining <= 0) {
+      await this.destroySession(sessionId);
+      return null;
+    }
+
+    await this.redis.set(key, updated, { ex: secondsRemaining });
     return updated;
   }
 
   async addParticipant(sessionId, participant) {
-    return this.updateSession(sessionId, (session) => {
-      session.participants = session.participants || [];
+    const key = this.sessionKey(sessionId);
 
-      if (session.participants.includes(participant.socketId)) {
-        return session;
-      }
+    // Security fix: Upstash REST does not support WATCH.
+    const session = this.parse(await this.redis.get(key));
 
-      session.participants.push(participant.socketId);
+    if (!session) {
+      return null;
+    }
 
-      session.participantProfiles = session.participantProfiles || {};
-      session.participantProfiles[participant.socketId] = {
-        socketId: participant.socketId,
-        displayName: participant.displayName || 'Anonymous',
-        publicKey: participant.publicKey || null
-      };
+    const next = this.cloneSession(session);
+    const alreadyMember = next.participants.includes(participant.socketId);
 
-      session.publicKeys = session.publicKeys || {};
-      if (participant.publicKey) {
-        session.publicKeys[participant.socketId] = participant.publicKey;
-      }
+    if (!alreadyMember && next.participants.length >= next.maxParticipants) {
+      return { error: 'full' };
+    }
 
-      return session;
-    });
+    if (!alreadyMember) {
+      next.participants.push(participant.socketId);
+    }
+
+    next.participantProfiles[participant.socketId] = {
+      socketId: participant.socketId,
+      displayName: participant.displayName || 'Anonymous',
+      publicKey: participant.publicKey || null
+    };
+
+    if (participant.publicKey) {
+      next.publicKeys[participant.socketId] = participant.publicKey;
+    }
+
+    const secondsRemaining = this.remainingSeconds(session);
+    if (secondsRemaining <= 0) {
+      await this.destroySession(sessionId);
+      return null;
+    }
+
+    await this.redis.set(key, next, { ex: secondsRemaining });
+
+    return next;
   }
 
   async removeParticipant(sessionId, socketId) {

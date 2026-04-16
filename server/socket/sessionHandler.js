@@ -135,7 +135,7 @@ function registerSessionHandler({ io, socket, sessionStore, destroySessionNow })
 
   socket.on('key:update', async (payload = {}) => {
     const { sessionId, publicKey } = payload;
-    if (!sessionId || !publicKey) {
+    if (!sessionId || !publicKey || String(sessionId).toLowerCase() !== socket.data.sessionId) {
       return;
     }
 
@@ -150,8 +150,8 @@ function registerSessionHandler({ io, socket, sessionStore, destroySessionNow })
   });
 
   socket.on('session:leave', async (payload = {}) => {
-    const sessionId = payload.sessionId || socket.data.sessionId;
-    if (!sessionId) {
+    const sessionId = String(payload.sessionId || '').toLowerCase();
+    if (!sessionId || sessionId !== socket.data.sessionId) {
       return;
     }
 
@@ -162,10 +162,10 @@ function registerSessionHandler({ io, socket, sessionStore, destroySessionNow })
   });
 
   socket.on('session:nuke', async (payload = {}, ack) => {
-    const sessionId = String(payload.sessionId || socket.data.sessionId || '').toLowerCase();
-    if (!sessionId) {
+    const sessionId = String(payload.sessionId || '').toLowerCase();
+    if (!sessionId || sessionId !== socket.data.sessionId) {
       if (typeof ack === 'function') {
-        ack({ ok: false, error: 'Missing sessionId' });
+        ack({ ok: false, error: 'Missing or invalid sessionId' });
       }
       return;
     }

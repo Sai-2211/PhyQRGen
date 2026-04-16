@@ -1,17 +1,11 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { nodePolyfills } from 'vite-plugin-node-polyfills';
 
 export default defineConfig({
-  plugins: [
-    react(),
-    nodePolyfills({
-      include: ['events', 'stream', 'util', 'buffer', 'process'],
-      globals: { Buffer: true, global: true, process: true },
-    })
-  ],
+  // Security fix: bind Vite dev server to localhost and remove unused Node polyfills that pull vulnerable crypto shims.
+  plugins: [react()],
   server: {
-    host: true,
+    host: '127.0.0.1',
     port: 5173
   }
 });
